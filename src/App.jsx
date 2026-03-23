@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ── 상수
 const TYPES0 = [
   {key:"work",label:"업무",color:"#378ADD"},
   {key:"exhibition",label:"체험관",color:"#1D9E75"},
@@ -32,7 +31,6 @@ const EF = [
 ];
 const WDAYS = ["일","월","화","수","목","금","토"];
 
-// ── 유틸
 const gid = () => Math.random().toString(36).slice(2,10);
 const fmtD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const tod = () => fmtD(new Date());
@@ -46,7 +44,6 @@ const pND = (raw) => { if(!raw) return tod(); const m=raw.match(/(\d{4})[\/\-](\
 const pStat = (s) => { if(!s) return "before"; if(s==="완료") return "done"; if(s==="진행") return "doing"; if(s==="취소"||s==="보류") return "cancel"; return "before"; };
 const tType = (f) => { if(!f) return "etc"; if(f.includes("체험관")) return "exhibition"; if(f.includes("식품안전교육센터")) return "edu_center"; if(f.includes("출장")) return "trip"; if(f.includes("교육운영단")) return "edu_ops"; if(f.includes("업무협조")) return "cooperation"; if(f.includes("현지실사")) return "field"; return "etc"; };
 
-// ── 데이터 [제목, 날짜, 상태, 우선순위, 메모]
 const ND = [
   ["세종여고 강사카드 ppt 제출","2025/10/15","완료",0,""],["센터-현업만족도","2025/10/02","완료",0,"개인정보 관련 서류 요청"],
   ["정보보안 검토회신","2025/10/21","완료",2,""],["식품안전교육센터 9월결과보고","2025/10/10","완료",0,"9월 결과 보고 작성 완료"],
@@ -132,7 +129,6 @@ const loadS = () => {
 };
 const saveS = (s) => { try { localStorage.setItem(SKEY,JSON.stringify(s)); } catch(e) {} };
 
-// ── 공통 컴포넌트
 function Overlay({children,onClose}) {
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",background:"rgba(0,0,0,0.35)",backdropFilter:"blur(4px)"}}>
@@ -143,14 +139,32 @@ function Overlay({children,onClose}) {
   );
 }
 
-function TagRow({items,active,onSelect,colorKey="color"}) {
+// 태스크 블록 컴포넌트 (공통)
+function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
+  const si=sInfo(t.status), ti=tInfo(types,t.type);
+  const now=new Date(), end=pld(t.endDate);
+  const dl=end?Math.ceil((end-now)/86400000):null;
+  const ov=t.status!=="done"&&t.status!=="cancel"&&dl!==null&&dl<0;
+  const sk=t.status==="done"||t.status==="cancel";
+  const isSel2=isSel||false;
   return (
-    <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>
-      {items.map(item => {
-        const col = item[colorKey]||item.color||item.border||"#888";
-        const on = active===item.key;
-        return <button key={item.key} onClick={()=>onSelect(item.key)} style={{fontSize:11,padding:"3px 9px",borderRadius:20,border:`1.5px solid ${on?col:"#ccc"}`,background:on?rgba(col,0.15):"#fff",color:on?col:"#666",cursor:"pointer",fontWeight:on?600:400}}>{item.label}</button>;
-      })}
+    <div onClick={()=>selMode?onSel(t.id):onClick(t)}
+      style={{padding:"5px 10px",borderRadius:8,marginBottom:4,cursor:"pointer",
+        background:isSel2?rgba(ti.color,0.25):rgba(ti.color,0.10),
+        border:`1px solid ${isSel2?"#378ADD":si.border}`,
+        borderLeft:`3px solid ${isSel2?"#378ADD":si.border}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        {selMode&&<div style={{width:14,height:14,borderRadius:3,border:`2px solid ${isSel2?"#378ADD":"#ccc"}`,background:isSel2?"#378ADD":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{isSel2&&<span style={{color:"#fff",fontSize:9}}>✓</span>}</div>}
+        {!selMode&&<div style={{width:6,height:6,borderRadius:"50%",background:ti.color,flexShrink:0}}/>}
+        {/* 제목: 좌측 정렬, 진회색 */}
+        <span style={{flex:1,fontSize:12,fontWeight:500,textDecoration:sk?"line-through":"none",color:sk?"#bbb":"#444",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"left"}}>{t.title}</span>
+        {ov&&<span style={{fontSize:10,color:"#E24B4A",flexShrink:0}}>초과</span>}
+      </div>
+      <div style={{display:"flex",gap:5,marginTop:2,paddingLeft:selMode?20:12,flexWrap:"wrap"}}>
+        <span style={{fontSize:10,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
+        <span style={{fontSize:10,padding:"0 4px",borderRadius:3,background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
+        {dl!==null&&!sk&&<span style={{fontSize:10,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
+      </div>
     </div>
   );
 }
@@ -170,8 +184,6 @@ function TaskForm({types,initial,onSave,onClose,onDelete}) {
     } catch(e) {}
   },[f.title]);
 
-  const inp = (type,val,onChange,extra={}) => <input type={type} value={val} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:13,boxSizing:"border-box",...extra}}/>;
-
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -181,25 +193,29 @@ function TaskForm({types,initial,onSave,onClose,onDelete}) {
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         <div>
           <div style={{fontSize:11,color:"#666",marginBottom:3}}>제목</div>
-          {inp("text",f.title,v=>upd("title",v),{borderLeft:`3px solid ${tc.color}`})}
+          <input value={f.title} onChange={e=>upd("title",e.target.value)} style={{width:"100%",padding:"6px 10px",border:"1px solid #ccc",borderLeft:`3px solid ${tc.color}`,borderRadius:8,fontSize:13,boxSizing:"border-box"}}/>
         </div>
         <div>
           <div style={{fontSize:11,color:"#666",marginBottom:3}}>메모</div>
-          <textarea value={f.note} onChange={e=>upd("note",e.target.value)} rows={2} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+          <textarea value={f.note} onChange={e=>upd("note",e.target.value)} rows={2} style={{width:"100%",padding:"6px 10px",border:"1px solid #ccc",borderRadius:8,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
         </div>
         <div>
-          <div style={{fontSize:11,color:"#666",marginBottom:0}}>유형</div>
-          <TagRow items={types} active={f.type} onSelect={v=>upd("type",v)}/>
+          <div style={{fontSize:11,color:"#666",marginBottom:3}}>유형</div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {types.map(t=>{const on=f.type===t.key;return<button key={t.key} onClick={()=>upd("type",t.key)} style={{fontSize:11,padding:"3px 9px",borderRadius:20,border:`1.5px solid ${on?t.color:"#ccc"}`,background:on?rgba(t.color,0.15):"#fff",color:on?t.color:"#666",cursor:"pointer",fontWeight:on?600:400}}>{t.label}</button>;})}
+          </div>
         </div>
         <div>
-          <div style={{fontSize:11,color:"#666",marginBottom:0}}>상태</div>
-          <TagRow items={SL.map(s=>({...s,color:s.border}))} active={f.status} onSelect={v=>upd("status",v)}/>
+          <div style={{fontSize:11,color:"#666",marginBottom:3}}>상태</div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {SL.map(st=>{const on=f.status===st.key;return<button key={st.key} onClick={()=>upd("status",st.key)} style={{fontSize:11,padding:"3px 9px",borderRadius:20,border:`1.5px solid ${on?st.border:"#ccc"}`,background:on?rgba(st.border,0.1):"#fff",color:on?st.border:"#666",cursor:"pointer",fontWeight:on?600:400}}>{st.label}</button>;})}
+          </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작일</div>{inp("date",f.startDate,v=>upd("startDate",v))}</div>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료일</div>{inp("date",f.endDate,v=>upd("endDate",v))}</div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작일</div><input type="date" value={f.startDate} onChange={e=>upd("startDate",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료일</div><input type="date" value={f.endDate} onChange={e=>upd("endDate",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
         </div>
-        <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>마감 시간</div>{inp("time",f.dueTime,v=>upd("dueTime",v))}</div>
+        <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>마감 시간</div><input type="time" value={f.dueTime} onChange={e=>upd("dueTime",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
         <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
           <div style={{flex:1}}>
             <div style={{fontSize:11,color:"#666",marginBottom:3}}>우선순위</div>
@@ -210,9 +226,9 @@ function TaskForm({types,initial,onSave,onClose,onDelete}) {
           <button onClick={ai} style={{padding:"6px 10px",fontSize:11,border:"1px solid #ccc",borderRadius:8,background:"#f5f5f5",cursor:"pointer"}}>AI 제안 ✦</button>
         </div>
         <div style={{display:"flex",gap:8,marginTop:4}}>
-          {isEdit&&<button onClick={onDelete} style={{padding:"8px 12px",background:"#fff0f0",color:"#c00",border:"1px solid #fcc",borderRadius:8,cursor:"pointer",fontSize:13}}>삭제</button>}
-          <button onClick={onClose} style={{flex:1,padding:"8px",background:"#f5f5f5",border:"1px solid #ddd",borderRadius:8,cursor:"pointer",fontSize:13}}>취소</button>
-          <button onClick={()=>{if(f.title.trim())onSave(f);}} style={{flex:2,padding:"8px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>저장</button>
+          {isEdit&&<button onClick={onDelete} style={{padding:"7px 12px",background:"#fff0f0",color:"#c00",border:"1px solid #fcc",borderRadius:8,cursor:"pointer",fontSize:13}}>삭제</button>}
+          <button onClick={onClose} style={{flex:1,padding:"7px",background:"#f5f5f5",border:"1px solid #ddd",borderRadius:8,cursor:"pointer",fontSize:13}}>취소</button>
+          <button onClick={()=>{if(f.title.trim())onSave(f);}} style={{flex:2,padding:"7px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>저장</button>
         </div>
       </div>
     </div>
@@ -234,8 +250,6 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
     return {...p,[k]:v};
   });
   const ti = ET.find(t=>t.key===f.target)||ET[0];
-  const inp = (type,val,onChange) => <input type={type} value={val} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:13,boxSizing:"border-box"}}/>;
-
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -244,14 +258,14 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         <div>
-          <div style={{fontSize:11,color:"#666",marginBottom:0}}>교육 구분</div>
-          <div style={{display:"flex",gap:5,marginTop:3}}>
+          <div style={{fontSize:11,color:"#666",marginBottom:3}}>교육 구분</div>
+          <div style={{display:"flex",gap:5}}>
             {ET.map(t=><button key={t.key} onClick={()=>upd("target",t.key)} style={{flex:1,padding:6,borderRadius:8,border:`1.5px solid ${f.target===t.key?t.color:"#ccc"}`,background:f.target===t.key?rgba(t.color,0.15):"#fff",color:f.target===t.key?t.color:"#666",cursor:"pointer",fontSize:13}}>{t.label}</button>)}
           </div>
         </div>
         <div>
-          <div style={{fontSize:11,color:"#666",marginBottom:0}}>교육 형태</div>
-          <div style={{display:"flex",gap:5,marginTop:3}}>
+          <div style={{fontSize:11,color:"#666",marginBottom:3}}>교육 형태</div>
+          <div style={{display:"flex",gap:5}}>
             {EF.map(t=><button key={t.key} onClick={()=>upd("type",t.key)} style={{flex:1,padding:6,borderRadius:8,border:`1.5px solid ${f.type===t.key?ti.color:"#ccc"}`,background:f.type===t.key?rgba(ti.color,0.12):"#fff",color:f.type===t.key?ti.color:"#666",cursor:"pointer",fontSize:13}}>{t.label}</button>)}
           </div>
         </div>
@@ -267,12 +281,12 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
           <span style={{fontSize:11,color:"#888"}}>차 (자동계산)</span>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작일</div>{inp("date",f.startDate,v=>upd("startDate",v))}</div>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료일</div>{inp("date",f.endDate,v=>upd("endDate",v))}</div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작일</div><input type="date" value={f.startDate} onChange={e=>upd("startDate",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료일</div><input type="date" value={f.endDate} onChange={e=>upd("endDate",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작 시간</div>{inp("time",f.startTime,v=>upd("startTime",v))}</div>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료 시간</div>{inp("time",f.endTime,v=>upd("endTime",v))}</div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작 시간</div><input type="time" value={f.startTime} onChange={e=>upd("startTime",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료 시간</div><input type="time" value={f.endTime} onChange={e=>upd("endTime",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
         </div>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
@@ -290,16 +304,40 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
         </div>
         <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>메모</div><textarea value={f.note} onChange={e=>upd("note",e.target.value)} rows={2} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/></div>
         <div style={{display:"flex",gap:8,marginTop:4}}>
-          {isEdit&&<button onClick={onDelete} style={{padding:"8px 12px",background:"#fff0f0",color:"#c00",border:"1px solid #fcc",borderRadius:8,cursor:"pointer",fontSize:13}}>삭제</button>}
-          <button onClick={onClose} style={{flex:1,padding:"8px",background:"#f5f5f5",border:"1px solid #ddd",borderRadius:8,cursor:"pointer",fontSize:13}}>취소</button>
-          <button onClick={()=>onSave(f)} style={{flex:2,padding:"8px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>저장</button>
+          {isEdit&&<button onClick={onDelete} style={{padding:"7px 12px",background:"#fff0f0",color:"#c00",border:"1px solid #fcc",borderRadius:8,cursor:"pointer",fontSize:13}}>삭제</button>}
+          <button onClick={onClose} style={{flex:1,padding:"7px",background:"#f5f5f5",border:"1px solid #ddd",borderRadius:8,cursor:"pointer",fontSize:13}}>취소</button>
+          <button onClick={()=>onSave(f)} style={{flex:2,padding:"7px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>저장</button>
         </div>
       </div>
     </div>
   );
 }
 
-function CalGrid({types,tasks,cur,setCur,onDay,onTask}) {
+// 날짜별 태스크 패널 (캘린더 하단)
+function DayPanel({date,tasks,types,onTask,onAdd,onClose}) {
+  const dt = tasks.filter(t=>inR(date,t.startDate,t.endDate))
+    .sort((a,b)=>{const ea=a.endDate||a.startDate||"9999",eb=b.endDate||b.startDate||"9999";return ea>eb?1:ea<eb?-1:0;});
+  const label = `${date.getMonth()+1}월 ${date.getDate()}일`;
+  return (
+    <div style={{marginTop:16,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",overflow:"hidden"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #f0f0f0",background:"#fafafa"}}>
+        <strong style={{fontSize:13,color:"#333"}}>{label} 업무 ({dt.length}건)</strong>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={onAdd} style={{fontSize:11,padding:"4px 10px",borderRadius:16,border:"none",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 추가</button>
+          <button onClick={onClose} style={{fontSize:11,padding:"4px 8px",borderRadius:16,border:"1px solid #ddd",background:"#fff",color:"#888",cursor:"pointer"}}>닫기</button>
+        </div>
+      </div>
+      <div style={{padding:"10px 12px",maxHeight:280,overflowY:"auto"}}>
+        {dt.length===0
+          ?<div style={{color:"#bbb",fontSize:13,textAlign:"center",padding:"1.5rem 0"}}>이 날 업무가 없어요</div>
+          :dt.map(t=><TaskBlock key={t.id} t={t} types={types} onClick={onTask} selMode={false} isSel={false} onSel={()=>{}}/>)
+        }
+      </div>
+    </div>
+  );
+}
+
+function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   const y=cur.getFullYear(), m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate();
   const now=new Date(), weeks=[];
@@ -320,16 +358,19 @@ function CalGrid({types,tasks,cur,setCur,onDay,onTask}) {
         {weeks.map((wk,wi)=>(
           <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
             {wk.map((date,di)=>{
-              if(!date) return <div key={`e${wi}${di}`} style={{minHeight:72,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
+              if(!date) return <div key={`e${wi}${di}`} style={{minHeight:80,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
               const dt=tasks.filter(t=>inR(date,t.startDate,t.endDate));
               const isT=sameD(date,now);
+              const isSel=selectedDate&&sameD(date,selectedDate);
               return (
-                <div key={`${wi}${di}`} onClick={()=>onDay(date)} style={{minHeight:72,padding:"4px 3px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isT?"#EBF4FD":"#fff",boxSizing:"border-box"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background="#f5f5f5";}} onMouseLeave={e=>{e.currentTarget.style.background=isT?"#EBF4FD":"#fff";}}>
+                <div key={`${wi}${di}`} onClick={()=>{setSelectedDate(isSel?null:date);}}
+                  style={{minHeight:80,padding:"4px 3px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",
+                    background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",
+                    boxSizing:"border-box",outline:isSel?"2px solid #378ADD":"none",outlineOffset:-1}}>
                   <div style={{display:"flex",justifyContent:"center",marginBottom:2}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:11,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
-                  {dt.slice(0,2).map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return <div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:10,padding:"1px 4px 1px 6px",marginBottom:1,borderRadius:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:ti.color,border:`1px solid ${si.border}`,borderLeft:`3.5px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1}}>{t.title}</div>;})}
-                  {dt.length>2&&<div style={{fontSize:9,color:"#aaa",paddingLeft:2}}>+{dt.length-2}</div>}
+                  {dt.slice(0,3).map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return <div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:10,padding:"1px 4px 1px 5px",marginBottom:1,borderRadius:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:"#444",border:`1px solid ${si.border}`,borderLeft:`3px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1,textAlign:"left"}}>{t.title}</div>;})}                  {dt.length>3&&<div style={{fontSize:9,color:"#aaa",paddingLeft:2}}>+{dt.length-3}</div>}
                 </div>
               );
             })}
@@ -337,8 +378,8 @@ function CalGrid({types,tasks,cur,setCur,onDay,onTask}) {
         ))}
       </div>
       <div style={{display:"flex",gap:12,marginTop:8,flexWrap:"wrap"}}>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{types.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:8,height:8,borderRadius:"50%",background:t.color}}/><span style={{fontSize:11,color:"#666"}}>{t.label}</span></div>)}</div>
-        <div style={{display:"flex",gap:8,marginLeft:"auto",flexWrap:"wrap"}}>{SL.map(st=><div key={st.key} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:10,height:10,borderRadius:2,border:`2px solid ${st.border}`,borderLeft:`3.5px solid ${st.border}`,background:"transparent"}}/><span style={{fontSize:11,color:"#666"}}>{st.label}</span></div>)}</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{types.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:t.color}}/><span style={{fontSize:10,color:"#666"}}>{t.label}</span></div>)}</div>
+        <div style={{display:"flex",gap:8,marginLeft:"auto",flexWrap:"wrap"}}>{SL.map(st=><div key={st.key} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:9,height:9,borderRadius:2,border:`2px solid ${st.border}`,borderLeft:`3px solid ${st.border}`,background:"transparent"}}/><span style={{fontSize:10,color:"#666"}}>{st.label}</span></div>)}</div>
       </div>
     </div>
   );
@@ -368,15 +409,15 @@ function EduGrid({eduItems,onDay,onItem}) {
         {weeks.map((wk,wi)=>(
           <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
             {wk.map((date,di)=>{
-              if(!date) return <div key={`e${wi}${di}`} style={{minHeight:72,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
+              if(!date) return <div key={`e${wi}${di}`} style={{minHeight:80,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
               const items=eduItems.filter(e=>inR(date,e.startDate,e.endDate));
               const isT=sameD(date,now);
               return (
-                <div key={`${wi}${di}`} onClick={()=>onDay(date)} style={{minHeight:72,padding:"4px 3px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isT?"#EBF4FD":"#fff",boxSizing:"border-box"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background="#f5f5f5";}} onMouseLeave={e=>{e.currentTarget.style.background=isT?"#EBF4FD":"#fff";}}>
+                <div key={`${wi}${di}`} onClick={()=>onDay(date)} style={{minHeight:80,padding:"4px 3px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isT?"#EBF4FD":"#fff",boxSizing:"border-box"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background="#f5f5f5";}} onMouseLeave={e=>{e.currentTarget.style.background=isT?"#EBF4FD":"#fff";}}>
                   <div style={{display:"flex",justifyContent:"center",marginBottom:2}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:11,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
-                  {items.slice(0,2).map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return <div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:10,padding:"1px 4px 1px 6px",marginBottom:1,borderRadius:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3.5px solid ${color}`}}>{lbl(item)}</div>;})}
+                  {items.slice(0,2).map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return <div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:10,padding:"1px 4px 1px 5px",marginBottom:1,borderRadius:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}>{lbl(item)}</div>;})}
                   {items.length>2&&<div style={{fontSize:9,color:"#aaa",paddingLeft:2}}>+{items.length-2}</div>}
                 </div>
               );
@@ -384,20 +425,20 @@ function EduGrid({eduItems,onDay,onItem}) {
           </div>
         ))}
       </div>
-      <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>{ET.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:"50%",background:t.color}}/><span style={{fontSize:11,color:"#666"}}>{t.short} = {t.label}</span></div>)}</div>
+      <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>{ET.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:t.color}}/><span style={{fontSize:10,color:"#666"}}>{t.short} = {t.label}</span></div>)}</div>
       {mi.length>0&&(
         <div style={{marginTop:16}}>
           <strong style={{fontSize:13}}>{m+1}월 교육 일정</strong>
           <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:6}}>
             {mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(
-              <div key={item.id} onClick={()=>onItem(item)} style={{padding:"10px 14px",borderRadius:10,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3.5px solid ${color}`}}>
+              <div key={item.id} onClick={()=>onItem(item)} style={{padding:"8px 14px",borderRadius:10,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                   <span style={{fontSize:13,fontWeight:600,color}}>{lbl(item)}</span>
                   <span style={{fontSize:11,color:"#666"}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}</span>
                   {item.type==="visit"&&item.place&&<span style={{fontSize:11,padding:"1px 7px",borderRadius:10,background:rgba(color,0.18),color}}>{item.place}</span>}
                 </div>
-                {item.lectures[0]?.subject&&<div style={{marginTop:5,display:"flex",gap:6,flexWrap:"wrap"}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:11,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}
-                {item.note&&<div style={{marginTop:4,fontSize:11,color:"#999"}}>{item.note}</div>}
+                {item.lectures[0]?.subject&&<div style={{marginTop:4,display:"flex",gap:6,flexWrap:"wrap"}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:11,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}
+                {item.note&&<div style={{marginTop:3,fontSize:11,color:"#999"}}>{item.note}</div>}
               </div>
             );})}
           </div>
@@ -415,26 +456,7 @@ function FocusView({types,tasks,onTask}) {
     <div>
       <div style={{fontSize:12,color:"#888",marginBottom:8}}>1주 전 ~ 2주 후 ({list.length}건)</div>
       {list.length===0&&<div style={{color:"#bbb",fontSize:13,textAlign:"center",padding:"2rem"}}>해당 기간 태스크 없음</div>}
-      {list.map(t=>{
-        const si=sInfo(t.status), ti=tInfo(types,t.type);
-        const dl=t.endDate?Math.ceil((pld(t.endDate)-now)/86400000):null;
-        const ov=dl!==null&&dl<0&&t.status!=="done"&&t.status!=="cancel";
-        const sk=t.status==="done"||t.status==="cancel";
-        return (
-          <div key={t.id} onClick={()=>onTask(t)} style={{padding:"9px 12px",borderRadius:10,marginBottom:6,cursor:"pointer",background:rgba(ti.color,0.12),border:`1px solid ${si.border}`,borderLeft:`3.5px solid ${si.border}`}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:ti.color,flexShrink:0}}/>
-              <span style={{fontSize:13,fontWeight:600,flex:1,textDecoration:sk?"line-through":"none",color:sk?"#aaa":ti.color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
-              <span style={{fontSize:10,padding:"1px 6px",borderRadius:10,background:rgba(si.border,0.12),color:si.border,border:`1px solid ${si.border}`}}>{si.label}</span>
-            </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",paddingLeft:14}}>
-              <span style={{fontSize:11,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-              <span style={{fontSize:11,padding:"0 5px",borderRadius:4,background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
-              {dl!==null&&!sk&&<span style={{fontSize:11,color:ov?"#E24B4A":dl<=3?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘 마감":`D-${dl}`}</span>}
-            </div>
-          </div>
-        );
-      })}
+      {list.map(t=><TaskBlock key={t.id} t={t} types={types} onClick={onTask} selMode={false} isSel={false} onSel={()=>{}}/>)}
     </div>
   );
 }
@@ -463,7 +485,6 @@ function TaskList({types,tasks,onTask,onAdd,onBulk}) {
     if(!Object.keys(ch).length) return;
     onBulk(sel,ch); exit();
   };
-
   const fBtn = (v,l) => <button key={v} onClick={()=>setFilter(v)} style={{fontSize:11,padding:"3px 10px",borderRadius:20,border:`1px solid ${filter===v?"#1a1a1a":"#ddd"}`,background:filter===v?"#1a1a1a":"#fff",color:filter===v?"#fff":"#666",cursor:"pointer"}}>{l}</button>;
 
   return (
@@ -475,51 +496,29 @@ function TaskList({types,tasks,onTask,onAdd,onBulk}) {
           {!selMode&&<button onClick={onAdd} style={{fontSize:11,padding:"3px 10px",borderRadius:20,border:"1px solid #ddd",background:"#fff",color:"#666",cursor:"pointer"}}>+ 추가</button>}
         </div>
       </div>
-      <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:5,marginBottom:8,flexWrap:"wrap"}}>
         <button onClick={()=>setTf("all")} style={{fontSize:11,padding:"2px 8px",borderRadius:10,border:`1.5px solid ${tf==="all"?"#1a1a1a":"#ddd"}`,background:"transparent",color:tf==="all"?"#1a1a1a":"#888",cursor:"pointer"}}>전체</button>
         {types.map(t=><button key={t.key} onClick={()=>setTf(t.key)} style={{fontSize:11,padding:"2px 8px",borderRadius:10,border:`1.5px solid ${tf===t.key?t.color:"#ddd"}`,background:tf===t.key?rgba(t.color,0.15):"transparent",color:tf===t.key?t.color:"#888",cursor:"pointer"}}>{t.label}</button>)}
       </div>
       {selMode&&(
-        <div style={{marginBottom:10,padding:"10px 12px",borderRadius:10,background:"#f9f9f9",border:"1px solid #e0e0e0"}}>
+        <div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"#f9f9f9",border:"1px solid #e0e0e0"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:panel?8:0}}>
             <button onClick={()=>setSel(s=>s.length===list.length?[]:list.map(t=>t.id))} style={{fontSize:11,padding:"3px 10px",borderRadius:10,border:"1px solid #ddd",background:"#fff",cursor:"pointer"}}>{sel.length===list.length?"전체 해제":"전체 선택"}</button>
             <span style={{fontSize:12,color:"#888"}}>{sel.length}개 선택</span>
             {sel.length>0&&<button onClick={()=>setPanel(p=>!p)} style={{marginLeft:"auto",fontSize:11,padding:"4px 12px",borderRadius:10,border:"none",background:"#378ADD",color:"#fff",cursor:"pointer",fontWeight:600}}>일괄 변경 {panel?"▲":"▼"}</button>}
           </div>
           {panel&&sel.length>0&&(
-            <div style={{display:"flex",flexDirection:"column",gap:8,paddingTop:8,borderTop:"1px solid #e8e8e8"}}>
-              <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>업무 유형</div><select value={bType} onChange={e=>setBType(e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:12}}><option value="">변경 안 함</option>{types.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
-              <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>진행 상태</div><select value={bStat} onChange={e=>setBStat(e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:12}}><option value="">변경 안 함</option>{SL.map(st=><option key={st.key} value={st.key}>{st.label}</option>)}</select></div>
-              <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>우선순위</div><select value={bPri} onChange={e=>setBPri(e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:12}}><option value="">변경 안 함</option>{PL.map((l,i)=><option key={i} value={i}>{l}</option>)}</select></div>
-              <button onClick={apply} style={{padding:"8px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>선택한 {sel.length}개 적용</button>
+            <div style={{display:"flex",flexDirection:"column",gap:6,paddingTop:8,borderTop:"1px solid #e8e8e8"}}>
+              <div><div style={{fontSize:11,color:"#666",marginBottom:2}}>업무 유형</div><select value={bType} onChange={e=>setBType(e.target.value)} style={{width:"100%",padding:"5px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:12}}><option value="">변경 안 함</option>{types.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+              <div><div style={{fontSize:11,color:"#666",marginBottom:2}}>진행 상태</div><select value={bStat} onChange={e=>setBStat(e.target.value)} style={{width:"100%",padding:"5px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:12}}><option value="">변경 안 함</option>{SL.map(st=><option key={st.key} value={st.key}>{st.label}</option>)}</select></div>
+              <div><div style={{fontSize:11,color:"#666",marginBottom:2}}>우선순위</div><select value={bPri} onChange={e=>setBPri(e.target.value)} style={{width:"100%",padding:"5px 8px",border:"1px solid #ccc",borderRadius:8,fontSize:12}}><option value="">변경 안 함</option>{PL.map((l,i)=><option key={i} value={i}>{l}</option>)}</select></div>
+              <button onClick={apply} style={{padding:"7px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>선택한 {sel.length}개 적용</button>
             </div>
           )}
         </div>
       )}
       {list.length===0&&<div style={{color:"#bbb",fontSize:13,textAlign:"center",padding:"2rem"}}>태스크가 없어요</div>}
-      {list.map(t=>{
-        const si=sInfo(t.status), ti=tInfo(types,t.type);
-        const now=new Date(), end=pld(t.endDate);
-        const dl=end?Math.ceil((end-now)/86400000):null;
-        const ov=t.status!=="done"&&t.status!=="cancel"&&dl!==null&&dl<0;
-        const sk=t.status==="done"||t.status==="cancel";
-        const isSel=sel.includes(t.id);
-        return (
-          <div key={t.id} onClick={()=>selMode?setSel(s=>s.includes(t.id)?s.filter(x=>x!==t.id):[...s,t.id]):onTask(t)} style={{padding:"9px 12px",borderRadius:10,marginBottom:6,cursor:"pointer",background:isSel?rgba(ti.color,0.25):rgba(ti.color,0.12),border:`1px solid ${isSel?"#378ADD":si.border}`,borderLeft:`3.5px solid ${isSel?"#378ADD":si.border}`,outline:isSel?"2px solid #378ADD":"none",outlineOffset:1}}>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              {selMode&&<div style={{width:16,height:16,borderRadius:4,border:`2px solid ${isSel?"#378ADD":"#ccc"}`,background:isSel?"#378ADD":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{isSel&&<span style={{color:"#fff",fontSize:10}}>✓</span>}</div>}
-              {!selMode&&<div style={{width:8,height:8,borderRadius:"50%",background:ti.color,flexShrink:0}}/>}
-              <span style={{flex:1,fontSize:13,fontWeight:600,textDecoration:sk?"line-through":"none",color:sk?"#aaa":ti.color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
-              {ov&&<span style={{fontSize:10,color:"#E24B4A"}}>초과</span>}
-            </div>
-            <div style={{display:"flex",gap:6,marginTop:3,paddingLeft:selMode?22:14,flexWrap:"wrap"}}>
-              {t.startDate&&<span style={{fontSize:11,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>}
-              <span style={{fontSize:11,padding:"0 5px",borderRadius:4,background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
-              {dl!==null&&!sk&&<span style={{fontSize:11,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
-            </div>
-          </div>
-        );
-      })}
+      {list.map(t=><TaskBlock key={t.id} t={t} types={types} onClick={onTask} selMode={selMode} isSel={sel.includes(t.id)} onSel={id=>setSel(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id])}/>)}
     </div>
   );
 }
@@ -536,18 +535,18 @@ function TypeSettings({types,onSave,onClose}) {
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
         {list.map(t=>(
-          <div key={t.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,border:"1px solid #eee",background:"#fafafa"}}>
+          <div key={t.key} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:10,border:"1px solid #eee",background:"#fafafa"}}>
             <div style={{position:"relative",flexShrink:0}}>
-              <div onClick={()=>setOc(c=>c===t.key?null:t.key)} style={{width:24,height:24,borderRadius:"50%",background:t.color,cursor:"pointer",border:"2px solid rgba(0,0,0,0.1)"}}/>
+              <div onClick={()=>setOc(c=>c===t.key?null:t.key)} style={{width:22,height:22,borderRadius:"50%",background:t.color,cursor:"pointer",border:"2px solid rgba(0,0,0,0.1)"}}/>
               {oc===t.key&&(
-                <div style={{position:"absolute",top:30,left:0,zIndex:10,background:"#fff",border:"1px solid #ddd",borderRadius:10,padding:8,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,boxShadow:"0 4px 16px rgba(0,0,0,0.12)"}}>
+                <div style={{position:"absolute",top:28,left:0,zIndex:10,background:"#fff",border:"1px solid #ddd",borderRadius:10,padding:8,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,boxShadow:"0 4px 16px rgba(0,0,0,0.12)"}}>
                   {PCOLS.map(c=><div key={c} onClick={()=>{setList(l=>l.map(x=>x.key===t.key?{...x,color:c}:x));setOc(null);}} style={{width:18,height:18,borderRadius:"50%",background:c,cursor:"pointer",border:t.color===c?"2.5px solid #000":"2px solid transparent"}}/>)}
-                  <input type="color" value={t.color} onChange={e=>setList(l=>l.map(x=>x.key===t.key?{...x,color:e.target.value}:x))} style={{gridColumn:"span 4",height:24,border:"none",padding:0,cursor:"pointer",width:"100%"}}/>
+                  <input type="color" value={t.color} onChange={e=>setList(l=>l.map(x=>x.key===t.key?{...x,color:e.target.value}:x))} style={{gridColumn:"span 4",height:22,border:"none",padding:0,cursor:"pointer",width:"100%"}}/>
                 </div>
               )}
             </div>
             {el[t.key]
-              ?<input autoFocus value={t.label} onChange={e=>setList(l=>l.map(x=>x.key===t.key?{...x,label:e.target.value}:x))} onBlur={()=>setEl(p=>({...p,[t.key]:false}))} style={{flex:1,fontSize:13,padding:"3px 6px",border:"1px solid #ccc",borderRadius:6}}/>
+              ?<input autoFocus value={t.label} onChange={e=>setList(l=>l.map(x=>x.key===t.key?{...x,label:e.target.value}:x))} onBlur={()=>setEl(p=>({...p,[t.key]:false}))} style={{flex:1,fontSize:13,padding:"2px 6px",border:"1px solid #ccc",borderRadius:6}}/>
               :<span style={{flex:1,fontSize:13,cursor:"text"}} onClick={()=>setEl(p=>({...p,[t.key]:true}))}>{t.label}</span>
             }
             <span style={{fontSize:10,color:"#bbb"}}>(클릭 수정)</span>
@@ -555,8 +554,8 @@ function TypeSettings({types,onSave,onClose}) {
           </div>
         ))}
       </div>
-      <button onClick={()=>setList(l=>[...l,{key:gid(),label:"새 유형",color:PCOLS[l.length%PCOLS.length]}])} style={{width:"100%",padding:8,borderRadius:8,border:"1px dashed #ccc",background:"transparent",cursor:"pointer",color:"#888",marginBottom:12}}>+ 유형 추가</button>
-      <button onClick={()=>onSave(list)} style={{width:"100%",padding:9,background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600}}>저장</button>
+      <button onClick={()=>setList(l=>[...l,{key:gid(),label:"새 유형",color:PCOLS[l.length%PCOLS.length]}])} style={{width:"100%",padding:8,borderRadius:8,border:"1px dashed #ccc",background:"transparent",cursor:"pointer",color:"#888",marginBottom:10}}>+ 유형 추가</button>
+      <button onClick={()=>onSave(list)} style={{width:"100%",padding:8,background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600}}>저장</button>
     </div>
   );
 }
@@ -568,6 +567,7 @@ function App() {
   const push = useCallback(next=>{setHist(h=>[...h.slice(-29),state]);setState(next);},[state]);
   const undo = useCallback(()=>{if(!hist.length)return;setState(hist[hist.length-1]);setHist(h=>h.slice(0,-1));},[hist]);
   const [calDate,setCalDate] = useState(new Date());
+  const [selectedDate,setSelectedDate] = useState(null);
   const [modal,setModal] = useState(null);
   const [mainTab,setMainTab] = useState("planner");
   const [subTab,setSubTab] = useState("focus");
@@ -589,18 +589,57 @@ function App() {
   const saveEdu = (form) => {let next;if(modal?.type==="edu-edit")next=eduItems.map(e=>e.id===modal.item.id?{...e,...form}:e);else next=[...eduItems,{id:gid(),...form}];push({...state,eduItems:reorder(next)});showT("교육일정 저장됨");setModal(null);};
   const delEdu = (id) => {push({...state,eduItems:reorder(eduItems.filter(e=>e.id!==id))});showT("교육일정 삭제됨");setModal(null);};
 
-  const side = (
-    <div style={{display:"flex",flexDirection:"column",gap:8,height:"100%"}}>
-      <div style={{display:"flex",gap:4}}>
-        {[["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:6,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
+  // PC: 캘린더 + 사이드 패널 (포커스/목록)
+  const pcPlanner = (
+    <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:20,alignItems:"start"}}>
+      {/* 왼쪽: 캘린더 */}
+      <div>
+        <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate}
+          onTask={openEdit}
+          selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
+        {selectedDate&&(
+          <DayPanel
+            date={selectedDate} tasks={tasks} types={types}
+            onTask={openEdit}
+            onAdd={()=>openNew(selectedDate)}
+            onClose={()=>setSelectedDate(null)}/>
+        )}
       </div>
-      <div style={{overflowY:"auto",flex:1}}>
-        {subTab==="focus"
-          ?<FocusView types={types} tasks={tasks} onTask={openEdit}/>
-          :<TaskList types={types} tasks={tasks} onTask={openEdit} onAdd={()=>openNew()} onBulk={bulkUpd}/>
-        }
+      {/* 오른쪽: 포커스 / 목록 */}
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",gap:4}}>
+          {[["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:6,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          {subTab==="focus"
+            ?<FocusView types={types} tasks={tasks} onTask={openEdit}/>
+            :<TaskList types={types} tasks={tasks} onTask={openEdit} onAdd={()=>openNew()} onBulk={bulkUpd}/>
+          }
+        </div>
       </div>
     </div>
+  );
+
+  // 모바일: 탭 방식
+  const mobilePlanner = (
+    <>
+      <div style={{display:"flex",gap:4,marginBottom:12}}>
+        {[["calendar","캘린더"],["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:7,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
+      </div>
+      {subTab==="calendar"&&(
+        <div>
+          <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate}
+            onTask={openEdit}
+            selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
+          {selectedDate&&(
+            <DayPanel date={selectedDate} tasks={tasks} types={types}
+              onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>
+          )}
+        </div>
+      )}
+      {subTab==="focus"&&<FocusView types={types} tasks={tasks} onTask={openEdit}/>}
+      {subTab==="list"&&<TaskList types={types} tasks={tasks} onTask={openEdit} onAdd={()=>openNew()} onBulk={bulkUpd}/>}
+    </>
   );
 
   return (
@@ -612,7 +651,8 @@ function App() {
         </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {mainTab==="planner"&&<button onClick={()=>setModal({type:"settings"})} style={{fontSize:12,padding:"6px 12px",borderRadius:20,border:"1px solid #ddd",background:"#fff",cursor:"pointer"}}>⚙ 유형 관리</button>}
-          {mainTab==="planner"&&<button onClick={()=>openNew()} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 새 태스크</button>}
+          {mainTab==="planner"&&!mobile&&<button onClick={()=>openNew(selectedDate||undefined)} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 새 태스크</button>}
+          {mainTab==="planner"&&mobile&&<button onClick={()=>openNew()} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 새 태스크</button>}
           {mainTab==="edu"&&<button onClick={()=>setModal({type:"edu-new"})} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1D9E75",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 교육일정</button>}
         </div>
       </div>
@@ -621,24 +661,7 @@ function App() {
         {[["planner","📋 플래너"],["edu","🎓 교육일정"]].map(([v,l])=><button key={v} onClick={()=>setMainTab(v)} style={{padding:"8px 18px",borderRadius:10,border:`1.5px solid ${mainTab===v?"#1a1a1a":"#ddd"}`,background:mainTab===v?"#1a1a1a":"transparent",color:mainTab===v?"#fff":"#888",cursor:"pointer",fontWeight:mainTab===v?600:400,fontSize:13}}>{l}</button>)}
       </div>
 
-      {mainTab==="planner"&&(
-        mobile?(
-          <>
-            <div style={{display:"flex",gap:4,marginBottom:12}}>
-              {[["calendar","캘린더"],["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:7,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
-            </div>
-            {subTab==="calendar"&&<CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate} onDay={openNew} onTask={openEdit}/>}
-            {subTab==="focus"&&<FocusView types={types} tasks={tasks} onTask={openEdit}/>}
-            {subTab==="list"&&<TaskList types={types} tasks={tasks} onTask={openEdit} onAdd={()=>openNew()} onBulk={bulkUpd}/>}
-          </>
-        ):(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:20,alignItems:"start"}}>
-            <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate} onDay={openNew} onTask={openEdit}/>
-            <div style={{height:"calc(100vh - 150px)",display:"flex",flexDirection:"column"}}>{side}</div>
-          </div>
-        )
-      )}
-
+      {mainTab==="planner"&&(mobile?mobilePlanner:pcPlanner)}
       {mainTab==="edu"&&<EduGrid eduItems={eduItems} onDay={d=>setModal({type:"edu-new",date:fmtD(d)})} onItem={item=>setModal({type:"edu-edit",item})}/>}
 
       {modal?.type==="settings"&&<Overlay onClose={()=>setModal(null)}><TypeSettings types={types} onSave={saveTypes} onClose={()=>setModal(null)}/></Overlay>}
