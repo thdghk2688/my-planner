@@ -19,14 +19,18 @@ const SL = [
 ];
 const PL = ["낮음","보통","높음","긴급"];
 const PC = ["#888780","#378ADD","#EF9F27","#E24B4A"];
+// 대비 강한 색 팔레트 (계열별 명도 차이 확보)
 const PCOLS = [
-  "#1A6EBF","#378ADD","#5BA4E8","#0E4D8A","#2196F3","#89C0F0",
-  "#0F6E56","#1D9E75","#27AE60","#2ECC71","#00897B","#52C78A",
-  "#7F77DD","#5C6BC0","#9C27B0","#AB47BC","#6A1B9A","#8E24AA",
-  "#E24B4A","#D4537E","#E91E63","#C0392B","#E53935","#AD1457",
-  "#D85A30","#EF9F27","#F57C00","#FF8F00","#BA7517","#F9A825",
-  "#00838F","#00ACC1","#26C6DA","#0097A7","#006064","#4DB6AC",
-  "#639922","#7CB342","#8D6E63","#795548","#546E7A","#888780",
+  // 진한 계열
+  "#1A3A6B","#0F6E56","#5C1F8A","#8B1A1A","#7A4000","#004D5C",
+  // 중간 계열
+  "#378ADD","#1D9E75","#7F77DD","#E24B4A","#D85A30","#00897B",
+  // 선명 계열
+  "#2196F3","#00C853","#9C27B0","#F44336","#FF6D00","#00BCD4",
+  // 밝은 계열
+  "#64B5F6","#69F0AE","#CE93D8","#EF9A9A","#FFAB40","#80DEEA",
+  // 포인트
+  "#D4537E","#BA7517","#639922","#546E7A","#795548","#888780",
 ];
 const ET = [
   {key:"worker",label:"종사자",short:"종",color:"#7F77DD"},
@@ -175,7 +179,7 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
   const sk=t.status==="done"||t.status==="cancel";
   return (
     <div onClick={()=>selMode?onSel(t.id):onClick(t)}
-      style={{padding:"3px 8px",borderRadius:6,marginBottom:3,cursor:"pointer",
+      style={{padding:"2px 6px",borderRadius:5,marginBottom:2,cursor:"pointer",
         background:isSel?rgba(ti.color,0.25):rgba(ti.color,0.10),
         border:`1px solid ${isSel?"#378ADD":si.border}`,
         borderLeft:`3px solid ${isSel?"#378ADD":si.border}`}}>
@@ -187,8 +191,8 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
       </div>
       <div style={{display:"flex",gap:4,marginTop:1,paddingLeft:10,flexWrap:"wrap"}}>
         <span style={{fontSize:9,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-        <span style={{fontSize:9,padding:"0 3px",borderRadius:3,background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
-        {dl!==null&&!sk&&<span style={{fontSize:9,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
+        <span style={{fontSize:8,padding:"0 2px",borderRadius:2,lineHeight:"12px",background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
+        {dl!==null&&!sk&&<span style={{fontSize:8,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
       </div>
     </div>
   );
@@ -324,12 +328,12 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
               const isSel=selectedDate&&sameD(date,selectedDate);
               return(
                 <div key={`${wi}${di}`} onClick={()=>setSelectedDate(isSel?null:date)}
-                  style={{minHeight:64,padding:"3px 2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #378ADD":"none",outlineOffset:-1}}>
-                  <div style={{display:"flex",justifyContent:"center",marginBottom:2}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:11,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
+                  style={{minHeight:52,padding:"2px 2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #378ADD":"none",outlineOffset:-1}}>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
+                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
-                  {dt.slice(0,3).map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return<div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:10,padding:"1px 4px 1px 5px",marginBottom:1,borderRadius:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:"#444",border:`1px solid ${si.border}`,borderLeft:`3px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1,textAlign:"left"}}>{t.title}</div>;})}
-                  {dt.length>3&&<div style={{fontSize:9,color:"#aaa",paddingLeft:2}}>+{dt.length-3}</div>}
+                  {dt.slice(0,3).map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return<div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:"#444",border:`1px solid ${si.border}`,borderLeft:`3px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1,textAlign:"left",lineHeight:"14px"}}>{t.title}</div>;})}
+                  {dt.length>3&&<div style={{fontSize:8,color:"#aaa",paddingLeft:2}}>+{dt.length-3}</div>}
                 </div>
               );
             })}
@@ -354,8 +358,8 @@ function EduGrid({eduItems,onDay,onItem}) {
   const lbl=item=>{const t=ET.find(x=>x.key===item.target);const loc=item.type==="visit"&&item.region?`(${item.region})`:"";return`${t?t.short:"?"} ${item.nth}차 ${EF.find(x=>x.key===item.type)?.label||""}${loc}`;};
   const mi=[...eduItems].filter(e=>{const sv=pld(e.startDate);return sv&&sv.getFullYear()===y&&sv.getMonth()===m;}).sort((a,b)=>a.startDate>b.startDate?1:-1);
   const BD="1px solid #e0e0e0";
-  return(
-    <div>
+  const calGrid=(
+    <div style={{minWidth:0,flex:1}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
@@ -368,16 +372,16 @@ function EduGrid({eduItems,onDay,onItem}) {
         {weeks.map((wk,wi)=>(
           <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
             {wk.map((date,di)=>{
-              if(!date)return<div key={`e${wi}${di}`} style={{minHeight:80,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
+              if(!date)return<div key={`e${wi}${di}`} style={{minHeight:52,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
               const items=eduItems.filter(e=>inR(date,e.startDate,e.endDate));
               const isT=sameD(date,now);
               return(
-                <div key={`${wi}${di}`} onClick={()=>onDay(date)} style={{minHeight:80,padding:"4px 3px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isT?"#EBF4FD":"#fff",boxSizing:"border-box"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background="#f5f5f5";}} onMouseLeave={e=>{e.currentTarget.style.background=isT?"#EBF4FD":"#fff";}}>
-                  <div style={{display:"flex",justifyContent:"center",marginBottom:2}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:11,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
+                <div key={`${wi}${di}`} onClick={()=>onDay(date)} style={{minHeight:52,padding:"2px 2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isT?"#EBF4FD":"#fff",boxSizing:"border-box"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background="#f5f5f5";}} onMouseLeave={e=>{e.currentTarget.style.background=isT?"#EBF4FD":"#fff";}}>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
+                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
-                  {items.slice(0,2).map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return<div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:10,padding:"1px 4px 1px 5px",marginBottom:1,borderRadius:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}>{lbl(item)}</div>;})}
-                  {items.length>2&&<div style={{fontSize:9,color:"#aaa",paddingLeft:2}}>+{items.length-2}</div>}
+                  {items.slice(0,2).map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return<div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3px solid ${color}`,lineHeight:"14px"}}>{lbl(item)}</div>;})}
+                  {items.length>2&&<div style={{fontSize:8,color:"#aaa",paddingLeft:2}}>+{items.length-2}</div>}
                 </div>
               );
             })}
@@ -385,7 +389,21 @@ function EduGrid({eduItems,onDay,onItem}) {
         ))}
       </div>
       <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>{ET.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:t.color}}/><span style={{fontSize:10,color:"#666"}}>{t.short} = {t.label}</span></div>)}</div>
-      {mi.length>0&&<div style={{marginTop:16}}><strong style={{fontSize:13}}>{m+1}월 교육 일정</strong><div style={{marginTop:8,display:"flex",flexDirection:"column",gap:6}}>{mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"8px 14px",borderRadius:10,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:13,fontWeight:600,color}}>{lbl(item)}</span><span style={{fontSize:11,color:"#666"}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}</span>{item.type==="visit"&&item.place&&<span style={{fontSize:11,padding:"1px 7px",borderRadius:10,background:rgba(color,0.18),color}}>{item.place}</span>}</div>{item.lectures[0]?.subject&&<div style={{marginTop:4,display:"flex",gap:6,flexWrap:"wrap"}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:11,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}{item.note&&<div style={{marginTop:3,fontSize:11,color:"#999"}}>{item.note}</div>}</div>);})}</div></div>}
+    </div>
+  );
+  const sidebar=(
+    <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",overflowY:"auto",position:"sticky",top:16}}>
+      <strong style={{fontSize:13,display:"block",marginBottom:10}}>{m+1}월 교육 일정</strong>
+      {mi.length===0&&<div style={{color:"#bbb",fontSize:13,textAlign:"center",padding:"2rem 0"}}>이 달 교육 없음</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"7px 10px",borderRadius:10,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}><div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}><span style={{fontSize:12,fontWeight:600,color}}>{lbl(item)}</span></div><div style={{fontSize:10,color:"#666",marginTop:2}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""}</div><div style={{fontSize:10,color:"#888"}}>{item.startTime}~{item.endTime}{item.type==="visit"&&item.place?` · ${item.place}`:""}</div>{item.lectures[0]?.subject&&<div style={{marginTop:3,display:"flex",flexDirection:"column",gap:1}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:10,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}{item.note&&<div style={{marginTop:2,fontSize:10,color:"#999"}}>{item.note}</div>}</div>);})}
+      </div>
+    </div>
+  );
+  return(
+    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%"}}>
+      {calGrid}
+      {sidebar}
     </div>
   );
 }
@@ -593,13 +611,13 @@ function App() {
   );
 
   const pcPlanner = (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:16,alignItems:"start",width:"100%"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%"}}>
       <div style={{minWidth:0}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate}
           onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
+      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
         <div style={{display:"flex",gap:4}}>
           {[["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:6,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
         </div>
