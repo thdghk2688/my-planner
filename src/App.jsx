@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { supabase } from "./supabase";
 
 const TYPES0 = [
   {key:"work",label:"업무",color:"#378ADD"},
@@ -41,77 +41,111 @@ const inR = (day,s,e) => { const sd=pld(s),ed=pld(e); if(!sd) return false; cons
 const rgba = (hex,a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
 const tInfo = (types,key) => types.find(t=>t.key===key)||types[0]||{color:"#888",label:"기타"};
 const sInfo = (key) => SL.find(s=>s.key===key)||SL[0];
+const pND = (raw) => { if(!raw) return tod(); const m=raw.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:tod(); };
+const pStat = (s) => { if(!s) return "before"; if(s==="완료") return "done"; if(s==="진행") return "doing"; if(s==="취소"||s==="보류") return "cancel"; return "before"; };
+const tType = (f) => { if(!f) return "etc"; if(f.includes("체험관")) return "exhibition"; if(f.includes("식품안전교육센터")) return "edu_center"; if(f.includes("출장")) return "trip"; if(f.includes("교육운영단")) return "edu_ops"; if(f.includes("업무협조")) return "cooperation"; if(f.includes("현지실사")) return "field"; return "etc"; };
 
-const INIT_TASKS = [
-  {id:gid(),title:"추진실적 보고서",type:"work",startDate:"2026-01-07",endDate:"2026-01-07",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"개인평가 기술서",type:"work",startDate:"2026-01-08",endDate:"2026-01-08",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"내부평가 실적자료 제출",type:"edu_ops",startDate:"2026-01-08",endDate:"2026-01-08",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"개인평가 업적기술서 제출",type:"etc",startDate:"2026-01-09",endDate:"2026-01-09",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"현지실사 실무과정 예산 계약 진행사항 확인",type:"field",startDate:"2026-01-12",endDate:"2026-01-12",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"현지실사 실무과정 교육자료 요청",type:"field",startDate:"2026-01-12",endDate:"2026-01-12",dueTime:"",priority:0,status:"doing",note:"1월 28일까지 요청"},
-  {id:gid(),title:"주요사업 성과보고서",type:"work",startDate:"2026-01-13",endDate:"2026-01-13",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"해외작업장 교육 예산 산출내역서 송부",type:"field",startDate:"2026-01-13",endDate:"2026-01-13",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"체험관 게시물 현행화 예산 진행사항 확인",type:"exhibition",startDate:"2026-01-13",endDate:"2026-01-13",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"25년 성과보고서 제출",type:"edu_ops",startDate:"2026-01-13",endDate:"2026-01-13",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"강원도 군부대 체험관견학",type:"exhibition",startDate:"2026-01-13",endDate:"2026-01-13",dueTime:"",priority:0,status:"cancel",note:"단체방문 신청 필요"},
-  {id:gid(),title:"발주계획 회신",type:"work",startDate:"2026-01-14",endDate:"2026-01-14",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 수납장 설치",type:"exhibition",startDate:"2026-01-15",endDate:"2026-01-15",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 대정비 소개 자료",type:"exhibition",startDate:"2026-01-21",endDate:"2026-01-21",dueTime:"",priority:0,status:"doing",note:""},
-  {id:gid(),title:"체험관 결의",type:"exhibition",startDate:"2026-01-21",endDate:"2026-01-21",dueTime:"",priority:0,status:"before",note:"현행화 시공 청소용품"},
-  {id:gid(),title:"식약처장 기관방문",type:"edu_ops",startDate:"2026-01-22",endDate:"2026-01-22",dueTime:"",priority:0,status:"done",note:"체험관 셋팅"},
-  {id:gid(),title:"체험관 만족도 조사 게시",type:"exhibition",startDate:"2026-01-23",endDate:"2026-01-23",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"현지실사 실무과정 계약 요청 체결",type:"field",startDate:"2026-01-23",endDate:"2026-01-23",dueTime:"",priority:0,status:"doing",note:"1/21 요청공문 발송"},
-  {id:gid(),title:"사전정보공표 현행화 자료 회신",type:"work",startDate:"2026-01-19",endDate:"2026-01-19",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 게시물 현행화 시공",type:"exhibition",startDate:"2026-01-19",endDate:"2026-01-19",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"현지실사 실무과정 교육 운영 준비",type:"field",startDate:"2026-01-28",endDate:"2026-01-28",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"종군교 체험관 단체방문 신청서 제출",type:"exhibition",startDate:"2026-02-09",endDate:"2026-02-09",dueTime:"",priority:0,status:"done",note:"2/10 방문 예정"},
-  {id:gid(),title:"현지실사 실무과정 교육",type:"field",startDate:"2026-02-09",endDate:"2026-02-09",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 개보수 청소용품 결의",type:"exhibition",startDate:"2026-02-11",endDate:"2026-02-11",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"현지실사 실무과정 교육 결과보고서",type:"field",startDate:"2026-02-12",endDate:"2026-02-12",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"식품안전교육센터 제안서 발표자료작성",type:"edu_center",startDate:"2026-02-19",endDate:"2026-02-19",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"현지실사 실무과정 결과보고",type:"field",startDate:"2026-02-23",endDate:"2026-02-23",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"현지실사 실무과정 결의",type:"field",startDate:"2026-02-23",endDate:"2026-02-23",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"해외작업장 현지실사 섭외 확정",type:"field",startDate:"2026-02-23",endDate:"2026-02-23",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"현장실습 확정여부 확인",type:"field",startDate:"2026-02-23",endDate:"2026-02-23",dueTime:"",priority:0,status:"done",note:"마니커로 확정"},
-  {id:gid(),title:"체험관 보도자료 수정",type:"exhibition",startDate:"2026-02-23",endDate:"2026-02-23",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"반려동물 설명회 명단 제출",type:"work",startDate:"2026-03-06",endDate:"2026-03-06",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 유지보수 계약안 기안",type:"exhibition",startDate:"2026-03-09",endDate:"2026-03-09",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"식품안전교육센터 입찰 요청",type:"edu_center",startDate:"2026-03-09",endDate:"2026-03-09",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 단체방문 신청서 제출",type:"exhibition",startDate:"2026-03-09",endDate:"2026-03-09",dueTime:"",priority:0,status:"done",note:"온라인 종군교 우송대"},
-  {id:gid(),title:"체험관 유지보수 계약 제반서류요청",type:"exhibition",startDate:"2026-03-09",endDate:"2026-03-09",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"체험관 예약자 견학 인솔",type:"exhibition",startDate:"2026-03-10",endDate:"2026-03-10",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"종군교 견학 9:30",type:"exhibition",startDate:"2026-03-13",endDate:"2026-03-13",dueTime:"",priority:0,status:"done",note:"박수진 교관"},
-  {id:gid(),title:"휴직대체직원 견학 10:30",type:"exhibition",startDate:"2026-03-13",endDate:"2026-03-13",dueTime:"",priority:0,status:"done",note:"인증기획팀 장형권"},
-  {id:gid(),title:"체험관 유지보수 계약 준비",type:"exhibition",startDate:"2026-03-16",endDate:"2026-03-16",dueTime:"",priority:0,status:"done",note:"예산 조정 필요서류 재요청"},
-  {id:gid(),title:"경영혁신 적극행정 공모자료 작성",type:"work",startDate:"2026-03-16",endDate:"2026-03-16",dueTime:"",priority:0,status:"doing",note:""},
-  {id:gid(),title:"식품안전교육센터 재입찰 요청공문발송",type:"edu_center",startDate:"2026-03-16",endDate:"2026-03-16",dueTime:"",priority:0,status:"done",note:"재입찰 일정 공유 후 요청 공문 발송"},
-  {id:gid(),title:"체험관 유지보수 계약발의 요청",type:"exhibition",startDate:"2026-03-17",endDate:"2026-03-17",dueTime:"",priority:0,status:"doing",note:""},
-  {id:gid(),title:"우송대 일본",type:"exhibition",startDate:"2026-03-17",endDate:"2026-03-17",dueTime:"",priority:0,status:"before",note:"박수정 교수 명단 제출 완료"},
-  {id:gid(),title:"송성옥 이사님 외 5",type:"exhibition",startDate:"2026-03-19",endDate:"2026-03-19",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"경영혁신 적극행정 아이디어 공모",type:"etc",startDate:"2026-03-20",endDate:"2026-03-20",dueTime:"",priority:0,status:"before",note:""},
-  {id:gid(),title:"엑스코어 방문",type:"exhibition",startDate:"2026-03-23",endDate:"2026-03-23",dueTime:"",priority:0,status:"before",note:"김병우 책임"},
-  {id:gid(),title:"충북대 식품영양학과 견학",type:"exhibition",startDate:"2026-03-27",endDate:"2026-03-27",dueTime:"",priority:0,status:"before",note:"명단 제출 필요"},
-  {id:gid(),title:"건국대 식품유통공학과 견학",type:"exhibition",startDate:"2026-03-27",endDate:"2026-03-27",dueTime:"",priority:0,status:"cancel",note:"010-8638-2651"},
-  {id:gid(),title:"라오스 국제인증팀",type:"exhibition",startDate:"2026-03-26",endDate:"2026-03-26",dueTime:"",priority:0,status:"before",note:"명단 받아야함"},
-  {id:gid(),title:"해외작업장 현지실사 교육",type:"field",startDate:"2026-04-07",endDate:"2026-04-07",dueTime:"",priority:0,status:"done",note:""},
-  {id:gid(),title:"기자단 원장님",type:"exhibition",startDate:"2026-04-09",endDate:"2026-04-09",dueTime:"",priority:0,status:"before",note:"누리기자단"},
+// DB 변환 헬퍼
+const taskToDb = (t) => ({
+  id: t.id, title: t.title, type: t.type,
+  start_date: t.startDate, end_date: t.endDate,
+  due_time: t.dueTime||"", priority: t.priority,
+  status: t.status, note: t.note||"",
+});
+const taskFromDb = (r) => ({
+  id: r.id, title: r.title, type: r.type,
+  startDate: r.start_date, endDate: r.end_date,
+  dueTime: r.due_time||"", priority: r.priority,
+  status: r.status, note: r.note||"",
+});
+const eduToDb = (e) => ({
+  id: e.id, target: e.target, type: e.type, nth: e.nth,
+  start_date: e.startDate, end_date: e.endDate,
+  start_time: e.startTime, end_time: e.endTime,
+  region: e.region||"", place: e.place||"",
+  lectures: e.lectures||[], note: e.note||"",
+});
+const eduFromDb = (r) => ({
+  id: r.id, target: r.target, type: r.type, nth: r.nth,
+  startDate: r.start_date, endDate: r.end_date,
+  startTime: r.start_time, endTime: r.end_time,
+  region: r.region||"", place: r.place||"",
+  lectures: r.lectures||[], note: r.note||"",
+});
+const typeToDb = (t, i) => ({id: t.key, key: t.key, label: t.label, color: t.color, sort_order: i});
+const typeFromDb = (r) => ({key: r.key, label: r.label, color: r.color});
+
+// ── 2026년 데이터만 (중복 없이 단일 배열로 통합)
+const INIT_TASKS_RAW = [
+  // ND (업무) — 2026년만
+  {title:"추진실적 보고서",date:"2026-01-07",type:"work",status:"done",priority:0,note:""},
+  {title:"개인평가 기술서",date:"2026-01-08",type:"work",status:"done",priority:0,note:""},
+  {title:"발주계획 회신",date:"2026-01-14",type:"work",status:"done",priority:0,note:""},
+  {title:"주요사업 성과보고서",date:"2026-01-13",type:"work",status:"done",priority:0,note:""},
+  {title:"해외작업장 교육 예산 산출내역서 송부",date:"2026-01-13",type:"field",status:"before",priority:0,note:""},
+  {title:"현지실사 실무과정 예산 계약 진행사항 확인",date:"2026-01-12",type:"field",status:"before",priority:0,note:""},
+  {title:"체험관 수납장 설치",date:"2026-01-15",type:"exhibition",status:"done",priority:0,note:""},
+  {title:"현지실사 실무과정 교육자료 요청",date:"2026-01-12",type:"field",status:"doing",priority:0,note:"1월 28일까지 요청"},
+  {title:"사전정보공표 현행화 자료 회신",date:"2026-01-19",type:"work",status:"done",priority:0,note:""},
+  {title:"체험관 게시물 현행화 예산 진행사항 확인",date:"2026-01-13",type:"exhibition",status:"before",priority:0,note:""},
+  {title:"체험관 만족도 조사 게시",date:"2026-01-23",type:"exhibition",status:"before",priority:0,note:""},
+  {title:"체험관 결의",date:"2026-01-21",type:"exhibition",status:"before",priority:0,note:"현행화 시공 청소용품"},
+  {title:"체험관 대정비 소개 자료",date:"2026-01-21",type:"exhibition",status:"doing",priority:0,note:""},
+  {title:"현지실사 실무과정 계약 요청 체결",date:"2026-01-23",type:"field",status:"doing",priority:0,note:"1/21 요청공문 발송"},
+  {title:"현지실사 실무과정 교육 운영 준비",date:"2026-01-28",type:"field",status:"before",priority:0,note:""},
+  {title:"종군교 체험관 단체방문 신청서 제출",date:"2026-02-09",type:"exhibition",status:"done",priority:0,note:"2/10 방문 예정"},
+  {title:"체험관 개보수 청소용품 결의",date:"2026-02-11",type:"exhibition",status:"before",priority:0,note:""},
+  {title:"식품안전교육센터 제안서 발표자료작성",date:"2026-02-19",type:"edu_center",status:"before",priority:0,note:""},
+  {title:"현지실사 실무과정 교육 결과보고서",date:"2026-02-12",type:"field",status:"before",priority:0,note:""},
+  {title:"현지실사 실무과정 결과보고",date:"2026-02-23",type:"field",status:"before",priority:0,note:""},
+  {title:"현지실사 실무과정 결의",date:"2026-02-23",type:"field",status:"before",priority:0,note:""},
+  {title:"해외작업장 현지실사 섭외 확정",date:"2026-02-23",type:"field",status:"before",priority:0,note:""},
+  {title:"체험관 보도자료 수정",date:"2026-02-23",type:"exhibition",status:"before",priority:0,note:""},
+  {title:"체험관 유지보수 계약안 기안",date:"2026-03-09",type:"exhibition",status:"done",priority:0,note:""},
+  {title:"식품안전교육센터 입찰 요청",date:"2026-03-09",type:"edu_center",status:"done",priority:0,note:""},
+  {title:"반려동물 설명회 명단 제출",date:"2026-03-06",type:"work",status:"done",priority:0,note:""},
+  {title:"체험관 단체방문 신청서 제출",date:"2026-03-09",type:"exhibition",status:"done",priority:0,note:"온라인 종군교 우송대"},
+  {title:"체험관 유지보수 계약 제반서류요청",date:"2026-03-09",type:"exhibition",status:"done",priority:0,note:""},
+  {title:"체험관 유지보수 계약 준비",date:"2026-03-16",type:"exhibition",status:"done",priority:0,note:"예산 조정 필요서류 재요청"},
+  {title:"경영혁신 적극행정 공모자료 작성",date:"2026-03-16",type:"work",status:"doing",priority:0,note:""},
+  {title:"식품안전교육센터 재입찰 요청공문발송",date:"2026-03-16",type:"edu_center",status:"done",priority:0,note:"재입찰 일정 공유 후 요청 공문 발송"},
+  {title:"체험관 유지보수 계약발의 요청",date:"2026-03-17",type:"exhibition",status:"doing",priority:0,note:""},
+  // TD (유형별) — 2026년만, ND와 중복 제거
+  {title:"내부평가 실적자료 제출",date:"2026-01-08",type:"edu_ops",status:"done",priority:1,note:""},
+  {title:"강원도 군부대 체험관견학",date:"2026-01-13",type:"exhibition",status:"cancel",priority:1,note:"단체방문 신청 필요"},
+  {title:"개인평가 업적기술서 제출",date:"2026-01-09",type:"etc",status:"done",priority:1,note:""},
+  {title:"25년 성과보고서 제출",date:"2026-01-13",type:"edu_ops",status:"done",priority:1,note:""},
+  {title:"체험관 게시물 현행화 시공",date:"2026-01-19",type:"exhibition",status:"done",priority:1,note:""},
+  {title:"현지실사 실무과정 교육",date:"2026-02-09",type:"field",status:"done",priority:1,note:""},
+  {title:"해외작업장 현지실사 교육",date:"2026-04-07",type:"field",status:"done",priority:1,note:""},
+  {title:"건국대 식품유통공학과 견학",date:"2026-03-27",type:"exhibition",status:"cancel",priority:1,note:"010-8638-2651"},
+  {title:"현장실습 확정여부 확인",date:"2026-02-23",type:"field",status:"done",priority:1,note:"마니커로 확정"},
+  {title:"식약처장 기관방문",date:"2026-01-22",type:"edu_ops",status:"done",priority:1,note:"체험관 셋팅"},
+  {title:"충북대 식품영양학과 견학",date:"2026-03-27",type:"exhibition",status:"before",priority:1,note:"명단 제출 필요"},
+  {title:"체험관 예약자 견학 인솔",date:"2026-03-10",type:"exhibition",status:"done",priority:1,note:""},
+  {title:"경영혁신 적극행정 아이디어 공모",date:"2026-03-20",type:"etc",status:"before",priority:1,note:""},
+  {title:"종군교 견학 9:30",date:"2026-03-13",type:"exhibition",status:"done",priority:1,note:"박수진 교관"},
+  {title:"휴직대체직원 견학 10:30",date:"2026-03-13",type:"exhibition",status:"done",priority:1,note:"인증기획팀 장형권"},
+  {title:"우송대 일본",date:"2026-03-17",type:"exhibition",status:"before",priority:1,note:"박수정 교수 명단 제출 완료"},
+  {title:"라오스 국제인증팀",date:"2026-03-26",type:"exhibition",status:"before",priority:1,note:"명단 받아야함"},
+  {title:"송성옥 이사님 외 5",date:"2026-03-19",type:"exhibition",status:"done",priority:1,note:""},
+  {title:"기자단 원장님",date:"2026-04-09",type:"exhibition",status:"before",priority:1,note:"누리기자단"},
+  {title:"엑스코어 방문",date:"2026-03-23",type:"exhibition",status:"before",priority:1,note:"김병우 책임"},
 ];
-const INIT_EDU = [{id:gid(),target:"worker",type:"center",nth:1,startDate:"2026-03-25",endDate:"2026-03-26",startTime:"09:00",endTime:"17:00",region:"",place:"",lectures:[{id:gid(),subject:"식품위생 기초",instructor:"김강사"}],note:""}];
 
-// ── Storage helpers (persist across sessions)
-const STORAGE_KEY = "planner-data-v1";
-const saveToStorage = async (tasks, eduItems, types) => {
-  try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify({ tasks, eduItems, types }));
-  } catch(e) { /* storage unavailable, continue in-memory */ }
-};
-const loadFromStorage = async () => {
-  try {
-    const result = await window.storage.get(STORAGE_KEY);
-    if (result?.value) return JSON.parse(result.value);
-  } catch(e) {}
-  return null;
-};
+const INIT_TASKS = INIT_TASKS_RAW.map(r=>({
+  id: gid(),
+  title: r.title,
+  type: r.type,
+  startDate: r.date,
+  endDate: r.date,
+  dueTime: "",
+  priority: r.priority,
+  status: r.status,
+  note: r.note,
+}));
+
+const INIT_EDU = [{id:gid(),target:"worker",type:"center",nth:1,startDate:"2026-03-25",endDate:"2026-03-26",startTime:"09:00",endTime:"17:00",region:"",place:"",lectures:[{id:gid(),subject:"식품위생 기초",instructor:"김강사"}],note:""}];
 
 function Overlay({children,onClose}) {
   return (
@@ -421,7 +455,7 @@ function TypeSettings({types,onSave,onClose}) {
   );
 }
 
-// ── 메인 App (in-memory state + persistent storage)
+// ── 메인 App
 function App() {
   const [tasks,setTasks] = useState([]);
   const [eduItems,setEduItems] = useState([]);
@@ -440,91 +474,123 @@ function App() {
 
   const showT = (msg) => {setToast(msg);clearTimeout(tRef.current);tRef.current=setTimeout(()=>setToast(null),2200);};
 
-  // Load from persistent storage on mount
+  // 초기 데이터 로드
   useEffect(()=>{
     const load = async () => {
       setLoading(true);
-      const saved = await loadFromStorage();
-      if (saved) {
-        setTasks(saved.tasks || INIT_TASKS);
-        setEduItems(saved.eduItems || INIT_EDU);
-        setTypes(saved.types || TYPES0);
-      } else {
-        setTasks(INIT_TASKS);
-        setEduItems(INIT_EDU);
-        setTypes(TYPES0);
-      }
+      try {
+        const {data:td} = await supabase.from("tasks").select("*").order("start_date");
+        if(td&&td.length>0) {
+          setTasks(td.map(taskFromDb));
+        } else {
+          const rows = INIT_TASKS.map(taskToDb);
+          await supabase.from("tasks").insert(rows);
+          setTasks(INIT_TASKS);
+        }
+        const {data:ed} = await supabase.from("edu_items").select("*").order("start_date");
+        if(ed&&ed.length>0) setEduItems(ed.map(eduFromDb));
+        else {
+          await supabase.from("edu_items").insert(INIT_EDU.map(eduToDb));
+          setEduItems(INIT_EDU);
+        }
+        const {data:tyd} = await supabase.from("app_types").select("*").order("sort_order");
+        if(tyd&&tyd.length>0) setTypes(tyd.map(typeFromDb));
+        else {
+          await supabase.from("app_types").insert(TYPES0.map(typeToDb));
+          setTypes(TYPES0);
+        }
+      } catch(e) { console.error(e); }
       setLoading(false);
     };
     load();
   },[]);
 
-  // Persist to storage whenever data changes
-  const persist = useCallback((t, e, ty) => {
-    saveToStorage(t, e, ty);
-  }, []);
+  // 실시간 구독 (백그라운드 동기화용 — 다른 기기/탭에서 변경 시 반영)
+  useEffect(()=>{
+    const ch1 = supabase.channel("tasks-changes")
+      .on("postgres_changes",{event:"*",schema:"public",table:"tasks"},()=>{
+        supabase.from("tasks").select("*").order("start_date").then(({data})=>{if(data)setTasks(data.map(taskFromDb));});
+      }).subscribe();
+    const ch2 = supabase.channel("edu-changes")
+      .on("postgres_changes",{event:"*",schema:"public",table:"edu_items"},()=>{
+        supabase.from("edu_items").select("*").order("start_date").then(({data})=>{if(data)setEduItems(data.map(eduFromDb));});
+      }).subscribe();
+    const ch3 = supabase.channel("types-changes")
+      .on("postgres_changes",{event:"*",schema:"public",table:"app_types"},()=>{
+        supabase.from("app_types").select("*").order("sort_order").then(({data})=>{if(data)setTypes(data.map(typeFromDb));});
+      }).subscribe();
+    return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2);supabase.removeChannel(ch3);};
+  },[]);
 
-  // CRUD — all purely in-memory + storage
-  const saveTask = (form) => {
-    const isEdit = modal?.type === "edit";
-    const id = isEdit ? modal.task.id : (form.id || gid());
-    const updated = isEdit
-      ? tasks.map(t => t.id === id ? {...form, id} : t)
-      : [...tasks, {...form, id}];
-    setTasks(updated);
-    persist(updated, eduItems, types);
+  // CRUD — DB 저장 + 즉시 로컬 state 반영 (새로고침 불필요)
+  const saveTask = async (form) => {
+    const id = modal?.task?.id || form.id || gid();
+    const task = {...form, id};
+    const row = taskToDb(task);
+    if(modal?.type==="edit") {
+      // 즉시 화면 반영
+      setTasks(prev => prev.map(t => t.id === id ? task : t));
+      await supabase.from("tasks").update(row).eq("id", id);
+    } else {
+      // 즉시 화면 반영
+      setTasks(prev => [...prev, task]);
+      await supabase.from("tasks").insert(row);
+    }
     showT("저장됨"); setModal(null);
   };
 
-  const delTask = (id) => {
-    const updated = tasks.filter(t => t.id !== id);
-    setTasks(updated);
-    persist(updated, eduItems, types);
+  const delTask = async (id) => {
+    // 즉시 화면 반영
+    setTasks(prev => prev.filter(t => t.id !== id));
+    await supabase.from("tasks").delete().eq("id", id);
     showT("삭제됨"); setModal(null);
   };
 
-  const saveTypes = (list) => {
+  const saveTypes = async (list) => {
+    // 즉시 화면 반영
     setTypes(list);
-    persist(tasks, eduItems, list);
+    await supabase.from("app_types").delete().neq("id","__none__");
+    await supabase.from("app_types").insert(list.map(typeToDb));
     showT("유형 저장됨"); setModal(null);
   };
 
-  const bulkUpd = (ids, ch) => {
-    const updated = tasks.map(t => ids.includes(t.id) ? {...t, ...ch} : t);
-    setTasks(updated);
-    persist(updated, eduItems, types);
+  const bulkUpd = async (ids, ch) => {
+    // 즉시 화면 반영
+    setTasks(prev => prev.map(t => ids.includes(t.id) ? {...t, ...ch} : t));
+    for(const id of ids) await supabase.from("tasks").update(ch).eq("id", id);
     showT(`${ids.length}개 수정됨`);
   };
 
-  const reorder = (items) => {
-    const r=[...items];
-    ["worker","future","trainer"].forEach(tgt=>{
-      const ix=r.map((e,i)=>e.target===tgt?i:-1).filter(i=>i>=0);
-      ix.slice().sort((a,b)=>r[a].startDate>r[b].startDate?1:-1).forEach((oi,rank)=>{r[oi]={...r[oi],nth:rank+1};});
-    });
-    return r;
-  };
+  const reorder = (items) => {const r=[...items];["worker","future","trainer"].forEach(tgt=>{const ix=r.map((e,i)=>e.target===tgt?i:-1).filter(i=>i>=0);ix.slice().sort((a,b)=>r[a].startDate>r[b].startDate?1:-1).forEach((oi,rank)=>{r[oi]={...r[oi],nth:rank+1};});});return r;};
 
-  const saveEdu = (form) => {
-    const isEdit = modal?.type === "edu-edit";
-    const id = isEdit ? modal.item.id : gid();
-    const next = isEdit
-      ? eduItems.map(e => e.id === id ? {...form, id} : e)
-      : [...eduItems, {...form, id}];
-    const reordered = reorder(next);
+  const saveEdu = async (form) => {
+    const reordered = reorder(modal?.type==="edu-edit"
+      ? eduItems.map(e=>e.id===modal.item.id?{...e,...form}:e)
+      : [...eduItems,{id:gid(),...form}]);
+    // 즉시 화면 반영
     setEduItems(reordered);
-    persist(tasks, reordered, types);
+    if(modal?.type==="edu-edit") {
+      const row = eduToDb(reordered.find(e=>e.id===modal.item.id));
+      await supabase.from("edu_items").update(row).eq("id",row.id);
+      for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id);
+    } else {
+      const newItem = reordered.find(e=>!eduItems.find(x=>x.id===e.id));
+      if(newItem) await supabase.from("edu_items").insert(eduToDb(newItem));
+      for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id);
+    }
     showT("교육일정 저장됨"); setModal(null);
   };
 
-  const delEdu = (id) => {
-    const reordered = reorder(eduItems.filter(e => e.id !== id));
+  const delEdu = async (id) => {
+    const reordered = reorder(eduItems.filter(e=>e.id!==id));
+    // 즉시 화면 반영
     setEduItems(reordered);
-    persist(tasks, reordered, types);
+    await supabase.from("edu_items").delete().eq("id",id);
+    for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id);
     showT("교육일정 삭제됨"); setModal(null);
   };
 
-  const openNew = (date) => setModal({type:"new",initial:{title:"",type:types[0]?.key||"work",startDate:date?fmtD(date):tod(),endDate:date?fmtD(date):tod(),dueTime:"",priority:1,status:"before",note:""}});
+  const openNew = (date?) => setModal({type:"new",initial:{title:"",type:types[0]?.key||"work",startDate:date?fmtD(date):tod(),endDate:date?fmtD(date):tod(),dueTime:"",priority:1,status:"before",note:""}});
   const openEdit = (task) => setModal({type:"edit",task});
 
   if(loading) return(
@@ -568,7 +634,7 @@ function App() {
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <h2 style={{margin:0,fontSize:17}}>My Planner</h2>
-          <span style={{fontSize:11,padding:"2px 8px",borderRadius:10,background:"#e8f4fd",color:"#378ADD",border:"1px solid #c5dff7"}}>● 로컬 저장</span>
+          <span style={{fontSize:11,padding:"2px 8px",borderRadius:10,background:"#e0f7e9",color:"#1D9E75",border:"1px solid #b2dfdb"}}>● 실시간 연동</span>
         </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {mainTab==="planner"&&<button onClick={()=>setModal({type:"settings"})} style={{fontSize:12,padding:"6px 12px",borderRadius:20,border:"1px solid #ddd",background:"#fff",cursor:"pointer"}}>⚙ 유형 관리</button>}
