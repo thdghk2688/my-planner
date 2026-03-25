@@ -191,7 +191,7 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
       </div>
       <div style={{display:"flex",gap:4,marginTop:1,paddingLeft:10,flexWrap:"wrap"}}>
         <span style={{fontSize:9,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-        <span style={{fontSize:8,padding:"0 2px",borderRadius:2,lineHeight:"12px",background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
+        <span style={{fontSize:8,padding:"0 2px",borderRadius:2,lineHeight:"10px",background:PC[t.priority]+"22",color:PC[t.priority],display:"inline-block"}}>{PL[t.priority]}</span>
         {dl!==null&&!sk&&<span style={{fontSize:8,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
       </div>
     </div>
@@ -393,10 +393,10 @@ function EduGrid({eduItems,onDay,onItem}) {
   );
   const sidebar=(
     <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",overflowY:"auto",position:"sticky",top:16}}>
-      <strong style={{fontSize:13,display:"block",marginBottom:10}}>{m+1}월 교육 일정</strong>
-      {mi.length===0&&<div style={{color:"#bbb",fontSize:13,textAlign:"center",padding:"2rem 0"}}>이 달 교육 없음</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"7px 10px",borderRadius:10,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}><div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}><span style={{fontSize:12,fontWeight:600,color}}>{lbl(item)}</span></div><div style={{fontSize:10,color:"#666",marginTop:2}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""}</div><div style={{fontSize:10,color:"#888"}}>{item.startTime}~{item.endTime}{item.type==="visit"&&item.place?` · ${item.place}`:""}</div>{item.lectures[0]?.subject&&<div style={{marginTop:3,display:"flex",flexDirection:"column",gap:1}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:10,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}{item.note&&<div style={{marginTop:2,fontSize:10,color:"#999"}}>{item.note}</div>}</div>);})}
+      <strong style={{fontSize:13,display:"block",marginBottom:8}}>{m+1}월 교육 일정</strong>
+      {mi.length===0&&<div style={{color:"#bbb",fontSize:12,textAlign:"center",padding:"1.5rem 0"}}>이 달 교육 없음</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        {mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"4px 8px",borderRadius:7,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}><div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:11,fontWeight:600,color}}>{lbl(item)}</span></div><div style={{fontSize:9,color:"#666",marginTop:1}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}{item.type==="visit"&&item.place?` · ${item.place}`:""}</div>{item.lectures[0]?.subject&&<div style={{marginTop:2,display:"flex",flexDirection:"column",gap:0}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:9,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}{item.note&&<div style={{marginTop:1,fontSize:9,color:"#999"}}>{item.note}</div>}</div>);})}
       </div>
     </div>
   );
@@ -554,24 +554,34 @@ function App() {
     return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2);supabase.removeChannel(ch3);};
   },[]);
 
-  // CRUD
+  // CRUD — DB 저장 + 즉시 로컬 state 반영 (새로고침 불필요)
   const saveTask = async (form) => {
-    const row = taskToDb({...form, id: modal?.task?.id||form.id||gid()});
-    if(modal?.type==="edit") await supabase.from("tasks").update(row).eq("id",row.id);
-    else await supabase.from("tasks").insert(row);
+    const id = modal?.task?.id || form.id || gid();
+    const task = {...form, id};
+    const row = taskToDb(task);
+    if(modal?.type==="edit") {
+      setTasks(prev => prev.map(t => t.id === id ? task : t)); // 즉시 반영
+      await supabase.from("tasks").update(row).eq("id", id);
+    } else {
+      setTasks(prev => [...prev, task]); // 즉시 반영
+      await supabase.from("tasks").insert(row);
+    }
     showT("저장됨"); setModal(null);
   };
   const delTask = async (id) => {
-    await supabase.from("tasks").delete().eq("id",id);
+    setTasks(prev => prev.filter(t => t.id !== id)); // 즉시 반영
+    await supabase.from("tasks").delete().eq("id", id);
     showT("삭제됨"); setModal(null);
   };
   const saveTypes = async (list) => {
+    setTypes(list); // 즉시 반영
     await supabase.from("app_types").delete().neq("id","__none__");
     await supabase.from("app_types").insert(list.map(typeToDb));
     showT("유형 저장됨"); setModal(null);
   };
-  const bulkUpd = async (ids,ch) => {
-    for(const id of ids) await supabase.from("tasks").update(ch).eq("id",id);
+  const bulkUpd = async (ids, ch) => {
+    setTasks(prev => prev.map(t => ids.includes(t.id) ? {...t, ...ch} : t)); // 즉시 반영
+    for(const id of ids) await supabase.from("tasks").update(ch).eq("id", id);
     showT(`${ids.length}개 수정됨`);
   };
 
@@ -581,21 +591,22 @@ function App() {
     const reordered = reorder(modal?.type==="edu-edit"
       ? eduItems.map(e=>e.id===modal.item.id?{...e,...form}:e)
       : [...eduItems,{id:gid(),...form}]);
+    setEduItems(reordered); // 즉시 반영
     if(modal?.type==="edu-edit") {
       const row = eduToDb(reordered.find(e=>e.id===modal.item.id));
       await supabase.from("edu_items").update(row).eq("id",row.id);
-      // nth 업데이트
       for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id);
     } else {
-      const newItem = reordered.find(e=>e.id!==modal?.item?.id&&!eduItems.find(x=>x.id===e.id));
+      const newItem = reordered.find(e=>!eduItems.find(x=>x.id===e.id));
       if(newItem) await supabase.from("edu_items").insert(eduToDb(newItem));
       for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id);
     }
     showT("교육일정 저장됨"); setModal(null);
   };
   const delEdu = async (id) => {
-    await supabase.from("edu_items").delete().eq("id",id);
     const reordered = reorder(eduItems.filter(e=>e.id!==id));
+    setEduItems(reordered); // 즉시 반영
+    await supabase.from("edu_items").delete().eq("id",id);
     for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id);
     showT("교육일정 삭제됨"); setModal(null);
   };
@@ -611,8 +622,8 @@ function App() {
   );
 
   const pcPlanner = (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%"}}>
-      <div style={{minWidth:0}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%",boxSizing:"border-box"}}>
+      <div style={{minWidth:0,width:"100%"}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate}
           onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
