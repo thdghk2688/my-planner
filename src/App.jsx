@@ -191,7 +191,7 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
       </div>
       <div style={{display:"flex",gap:4,marginTop:1,paddingLeft:10,flexWrap:"wrap"}}>
         <span style={{fontSize:9,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-        <span style={{fontSize:8,padding:"0 2px",borderRadius:2,lineHeight:"10px",background:PC[t.priority]+"22",color:PC[t.priority],display:"inline-block"}}>{PL[t.priority]}</span>
+        <span style={{fontSize:8,padding:"0 2px",borderRadius:2,lineHeight:"4px",height:"9px",background:PC[t.priority]+"22",color:PC[t.priority],display:"inline-block"}}>{PL[t.priority]}</span>
         {dl!==null&&!sk&&<span style={{fontSize:8,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
       </div>
     </div>
@@ -623,7 +623,7 @@ function App() {
 
   const pcPlanner = (
     <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%",boxSizing:"border-box"}}>
-      <div style={{minWidth:0,width:"100%"}}>
+      <div style={{minWidth:0,width:"100%",overflow:"hidden"}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate}
           onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
