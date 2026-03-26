@@ -191,7 +191,7 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
       </div>
       <div style={{display:"flex",gap:4,marginTop:1,paddingLeft:10,flexWrap:"wrap"}}>
         <span style={{fontSize:9,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-        <span style={{fontSize:7,padding:"0 2px",borderRadius:2,lineHeight:"9px",height:"9px",background:PC[t.priority]+"22",color:PC[t.priority],display:"inline-block"}}>{PL[t.priority]}</span>
+        <span style={{fontSize:8,padding:"0 2px",borderRadius:2,lineHeight:"10px",background:PC[t.priority]+"22",color:PC[t.priority],display:"inline-block"}}>{PL[t.priority]}</span>
         {dl!==null&&!sk&&<span style={{fontSize:8,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
       </div>
     </div>
@@ -230,7 +230,7 @@ function TaskForm({types,initial,onSave,onClose,onDelete}) {
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{SL.map(st=>{const on=f.status===st.key;return<button key={st.key} onClick={()=>upd("status",st.key)} style={{fontSize:11,padding:"3px 9px",borderRadius:20,border:`1.5px solid ${on?st.border:"#ccc"}`,background:on?rgba(st.border,0.1):"#fff",color:on?st.border:"#666",cursor:"pointer",fontWeight:on?600:400}}>{st.label}</button>;})}</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작일</div><input type="date" value={f.startDate} onChange={e=>{const v=e.target.value;setF(p=>({...p,startDate:v,endDate:p.endDate<v?v:p.endDate}));}} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
+          <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>시작일</div><input type="date" value={f.startDate} onChange={e=>upd("startDate",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
           <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>종료일</div><input type="date" value={f.endDate} onChange={e=>upd("endDate",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
         </div>
         <div><div style={{fontSize:11,color:"#666",marginBottom:3}}>마감 시간</div><input type="time" value={f.dueTime} onChange={e=>upd("dueTime",e.target.value)} style={{width:"100%",padding:"6px 8px",border:"1px solid #ccc",borderRadius:8,boxSizing:"border-box"}}/></div>
@@ -350,7 +350,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
 
 function EduGrid({eduItems,onDay,onItem}) {
   const [cur,setCur]=useState(new Date());
-  const [selDate,setSelDate]=useState(null);
   const y=cur.getFullYear(),m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
   const now=new Date(),weeks=[];
@@ -359,7 +358,6 @@ function EduGrid({eduItems,onDay,onItem}) {
   const lbl=item=>{const t=ET.find(x=>x.key===item.target);const loc=item.type==="visit"&&item.region?`(${item.region})`:"";return`${t?t.short:"?"} ${item.nth}차 ${EF.find(x=>x.key===item.type)?.label||""}${loc}`;};
   const mi=[...eduItems].filter(e=>{const sv=pld(e.startDate);return sv&&sv.getFullYear()===y&&sv.getMonth()===m;}).sort((a,b)=>a.startDate>b.startDate?1:-1);
   const BD="1px solid #e0e0e0";
-  const selDayItems = selDate ? eduItems.filter(e=>inR(selDate,e.startDate,e.endDate)) : [];
   const calGrid=(
     <div style={{minWidth:0,flex:1}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
@@ -377,10 +375,8 @@ function EduGrid({eduItems,onDay,onItem}) {
               if(!date)return<div key={`e${wi}${di}`} style={{minHeight:52,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
               const items=eduItems.filter(e=>inR(date,e.startDate,e.endDate));
               const isT=sameD(date,now);
-              const isSel=selDate&&sameD(date,selDate);
               return(
-                <div key={`${wi}${di}`} onClick={()=>setSelDate(isSel?null:date)}
-                  style={{minHeight:52,padding:"2px 2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #1D9E75":"none",outlineOffset:-1}}>
+                <div key={`${wi}${di}`} onClick={()=>onDay(date)} style={{minHeight:52,padding:"2px 2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isT?"#EBF4FD":"#fff",boxSizing:"border-box"}} onMouseEnter={e=>{if(!isT)e.currentTarget.style.background="#f5f5f5";}} onMouseLeave={e=>{e.currentTarget.style.background=isT?"#EBF4FD":"#fff";}}>
                   <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
@@ -393,22 +389,6 @@ function EduGrid({eduItems,onDay,onItem}) {
         ))}
       </div>
       <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>{ET.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:t.color}}/><span style={{fontSize:10,color:"#666"}}>{t.short} = {t.label}</span></div>)}</div>
-      {selDate&&(
-        <div style={{marginTop:12,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",overflow:"hidden"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",borderBottom:"1px solid #f0f0f0",background:"#fafafa"}}>
-            <strong style={{fontSize:12,color:"#333"}}>{selDate.getMonth()+1}월 {selDate.getDate()}일 교육 ({selDayItems.length}건)</strong>
-            <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>onDay(selDate)} style={{fontSize:11,padding:"3px 9px",borderRadius:12,border:"none",background:"#1D9E75",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 추가</button>
-              <button onClick={()=>setSelDate(null)} style={{fontSize:11,padding:"3px 7px",borderRadius:12,border:"1px solid #ddd",background:"#fff",color:"#888",cursor:"pointer"}}>닫기</button>
-            </div>
-          </div>
-          <div style={{padding:"8px 10px",maxHeight:200,overflowY:"auto"}}>
-            {selDayItems.length===0
-              ?<div style={{color:"#bbb",fontSize:12,textAlign:"center",padding:"1rem 0"}}>이 날 교육 일정이 없어요</div>
-              :selDayItems.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"4px 8px",borderRadius:7,marginBottom:4,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}><span style={{fontSize:11,fontWeight:600,color}}>{lbl(item)}</span><div style={{fontSize:9,color:"#666",marginTop:1}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}</div></div>);})}
-          </div>
-        </div>
-      )}
     </div>
   );
   const sidebar=(
@@ -642,8 +622,8 @@ function App() {
   );
 
   const pcPlanner = (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%",minWidth:0,boxSizing:"border-box"}}>
-      <div style={{minWidth:0,width:"100%",overflow:"hidden"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%",boxSizing:"border-box"}}>
+      <div style={{minWidth:0,width:"100%"}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate}
           onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
@@ -671,7 +651,7 @@ function App() {
   );
 
   return(
-    <div style={{padding:mobile?"0.75rem":"1.5rem",minHeight:"100vh",background:"#f0f0f0",boxSizing:"border-box",width:"100%"}}>
+    <div style={{padding:mobile?"0.75rem":"1.5rem",minHeight:"100vh",background:"#f0f0f0",boxSizing:"border-box"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <h2 style={{margin:0,fontSize:17}}>My Planner</h2>
