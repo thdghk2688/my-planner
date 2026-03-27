@@ -47,7 +47,6 @@ const inR = (day,s,e) => { const sd=pld(s),ed=pld(e); if(!sd) return false; cons
 const rgba = (hex,a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
 const tInfo = (types,key) => types.find(t=>t.key===key)||types[0]||{color:"#888",label:"기타"};
 const sInfo = (key) => SL.find(s=>s.key===key)||SL[0];
-const pND = (raw) => { if(!raw) return tod(); const m=raw.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:tod(); };
 const pStat = (s) => { if(!s) return "before"; if(s==="완료") return "done"; if(s==="진행") return "doing"; if(s==="취소"||s==="보류") return "cancel"; return "before"; };
 const tType = (f) => { if(!f) return "etc"; if(f.includes("체험관")) return "exhibition"; if(f.includes("식품안전교육센터")) return "edu_center"; if(f.includes("출장")) return "trip"; if(f.includes("교육운영단")) return "edu_ops"; if(f.includes("업무협조")) return "cooperation"; if(f.includes("현지실사")) return "field"; return "etc"; };
 
@@ -58,10 +57,8 @@ const eduFromDb = (r) => ({ id: r.id, target: r.target, type: r.type, nth: r.nth
 const typeToDb = (t, i) => ({id: t.key, key: t.key, label: t.label, color: t.color, sort_order: i});
 const typeFromDb = (r) => ({key: r.key, label: r.label, color: r.color});
 
-const ND=[["세종여고 강사카드 ppt 제출","2025/10/15","완료",0,""]]; 
-const TD=[["세종시청 14:00~16:00","2025/10/23","출장","완료",""]]; 
-const INIT_TASKS = [...ND.map(r=>({id:gid(),title:r[0],type:"work",startDate:pND(r[1]),endDate:pND(r[1]),dueTime:"",priority:r[3],status:pStat(r[2]),note:r[4]})), ...TD.map(r=>({id:gid(),title:r[0],type:tType(r[2]),startDate:pND(r[1]),endDate:pND(r[1]),dueTime:"",priority:1,status:pStat(r[3]),note:r[4]}))];
-const INIT_EDU = [{id:gid(),target:"worker",type:"center",nth:1,startDate:"2026-03-25",endDate:"2026-03-26",startTime:"09:00",endTime:"17:00",region:"",place:"",lectures:[{id:gid(),subject:"식품위생 기초",instructor:"김강사"}],note:""}];
+const INIT_TASKS = []; 
+const INIT_EDU = [];
 
 function Overlay({children,onClose}) {
   return (
@@ -105,9 +102,7 @@ function TaskForm({types,initial,onSave,onClose,onDelete}) {
   const upd = (k,v) => setF(p => {
     const next = { ...p, [k]: v };
     if (k === "startDate") {
-      if (p.startDate === p.endDate || v > p.endDate) {
-        next.endDate = v;
-      }
+      if (p.startDate === p.endDate || v > p.endDate) next.endDate = v;
     }
     return next;
   });
@@ -201,8 +196,14 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
   );
 }
 
+// ✨ 패널 정렬 수정: 마감 시간(dueTime) 빠른 순서
 function DayPanel({date,tasks,types,onTask,onAdd,onClose}) {
-  const dt=tasks.filter(t=>inR(date,t.startDate,t.endDate)).sort((a,b)=>{const ea=a.endDate||a.startDate||"9999",eb=b.endDate||b.startDate||"9999";return ea>eb?1:ea<eb?-1:0;});
+  const dt=tasks.filter(t=>inR(date,t.startDate,t.endDate)).sort((a,b)=>{
+    const timeA = a.dueTime || "23:59";
+    const timeB = b.dueTime || "23:59";
+    if(timeA !== timeB) return timeA.localeCompare(timeB);
+    return (a.title || "").localeCompare(b.title || "");
+  });
   return(
     <div style={{marginTop:16,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",overflow:"hidden"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #f0f0f0",background:"#fafafa"}}>
@@ -219,8 +220,13 @@ function DayPanel({date,tasks,types,onTask,onAdd,onClose}) {
   );
 }
 
+// ✨ 패널 정렬 수정: 시작 시간(startTime) 빠른 순서
 function EduDayPanel({date, items, onItem, onAdd, onClose}) {
-  const dt = items.filter(e => inR(date, e.startDate, e.endDate)).sort((a,b)=>a.startDate>b.startDate?1:-1);
+  const dt = items.filter(e => inR(date, e.startDate, e.endDate)).sort((a,b)=>{
+    const timeA = a.startTime || "23:59";
+    const timeB = b.startTime || "23:59";
+    return timeA.localeCompare(timeB);
+  });
   const lbl = item => {
     const t = ET.find(x => x.key === item.target);
     const loc = item.type === "visit" && item.region ? `(${item.region})` : "";
@@ -252,44 +258,134 @@ function EduDayPanel({date, items, onItem, onAdd, onClose}) {
   );
 }
 
+// ✨ 정렬 알고리즘 전면 개편: 1.긴일정순 -> 2.빠른시작일순 -> 3.빠른마감시간순
 function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   const y=cur.getFullYear(),m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
-  const now=new Date(),weeks=[];
+  const now=new Date(); now.setHours(0,0,0,0);
+  const weeks=[];
   let day=1-fd;
-  while(day<=dim){const wk=[];for(let i=0;i<7;i++,day++)wk.push(day>0&&day<=dim?new Date(y,m,day):null);weeks.push(wk);}
+  while(day<=dim){
+    const wk=[];
+    for(let i=0;i<7;i++,day++) wk.push(new Date(y,m,day));
+    weeks.push(wk);
+  }
   const BD="1px solid #e0e0e0";
+
   return(
-    <div>
+    <div style={{display: "flex", flexDirection: "column", height: "100%"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
         <button onClick={()=>setCur(new Date(y,m+1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>›</button>
       </div>
-      <div style={{border:BD,borderRadius:8,overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",borderBottom:BD}}>
-          {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none",background:"#fafafa"}}>{d}</div>)}
+      <div style={{flex: 1, border:BD, borderRadius:8, overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:BD, position:"sticky", top:0, zIndex:10, background:"#fafafa"}}>
+          {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none"}}>{d}</div>)}
         </div>
-        {weeks.map((wk,wi)=>(
-          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
-            {wk.map((date,di)=>{
-              if(!date)return<div key={`e${wi}${di}`} style={{minHeight:60,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
-              const dt=tasks.filter(t=>inR(date,t.startDate,t.endDate));
-              const isT=sameD(date,now);
-              const isSel=selectedDate&&sameD(date,selectedDate);
-              return(
-                <div key={`${wi}${di}`} onClick={()=>setSelectedDate(isSel?null:date)}
-                  style={{minHeight:60,padding:"2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #378ADD":"none",outlineOffset:-1}}>
-                  <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
-                  </div>
-                  {/* 일정 제한 없앰: 모든 dt 순회 */}
-                  {dt.map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return<div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:"#444",border:`1px solid ${si.border}`,borderLeft:`3px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1,textAlign:"left",lineHeight:"14px"}}>{t.title}</div>;})}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {weeks.map((wk,wi)=>{
+          const wkStart = wk[0];
+          const wkEnd = new Date(wk[6]); wkEnd.setHours(23,59,59,999);
+          
+          const dt = tasks.filter(t => {
+             const sd = pld(t.startDate||t.endDate);
+             const ed = pld(t.endDate||t.startDate);
+             if(!sd||!ed) return false;
+             ed.setHours(23,59,59,999);
+             return sd <= wkEnd && ed >= wkStart;
+          }).sort((a,b)=>{
+             const sdA = pld(a.startDate||a.endDate), edA = pld(a.endDate||a.startDate);
+             const sdB = pld(b.startDate||b.endDate), edB = pld(b.endDate||b.startDate);
+             const spanA = edA - sdA;
+             const spanB = edB - sdB;
+             // 1순위: 기간이 긴 일정 먼저 (내림차순)
+             if(spanA !== spanB) return spanB - spanA; 
+             // 2순위: 시작일 빠른 순 (오름차순)
+             if(sdA.getTime() !== sdB.getTime()) return sdA - sdB; 
+             // 3순위: 마감 시간 빠른 순 (오름차순, 시간 없으면 맨 뒤로)
+             const tA = a.dueTime || "23:59";
+             const tB = b.dueTime || "23:59";
+             return tA.localeCompare(tB); 
+          });
+
+          const slots = [];
+          const assigns = [];
+          dt.forEach(t => {
+             const sd = pld(t.startDate||t.endDate);
+             const ed = pld(t.endDate||t.startDate);
+             let sc = 0, ec = 6;
+             for(let i=0;i<7;i++){ if(sameD(sd,wk[i])) sc=i; if(sameD(ed,wk[i])) ec=i; }
+             if(sd < wkStart) sc = 0;
+             if(ed > wkEnd) ec = 6;
+             const span = ec - sc + 1;
+
+             let lvl = 0;
+             while(true){
+                if(!slots[lvl]) slots[lvl] = Array(7).fill(false);
+                let free = true;
+                for(let i=sc;i<=ec;i++) if(slots[lvl][i]) { free=false; break; }
+                if(free){
+                   for(let i=sc;i<=ec;i++) slots[lvl][i] = true;
+                   break;
+                }
+                lvl++;
+             }
+             assigns.push({task: t, lvl, sc, ec, span, isStart: sd>=wkStart, isEnd: ed<=wkEnd});
+          });
+
+          return(
+            <div key={wi} style={{position:"relative", display:"flex", flexDirection:"column", minHeight: 80, borderBottom: wi<weeks.length-1?BD:"none"}}>
+              <div style={{position:"absolute", inset:0, display:"grid", gridTemplateColumns:"repeat(7,1fr)"}}>
+                {wk.map((date, di) => {
+                  const isT = sameD(date, now);
+                  const isSel = selectedDate && sameD(date, selectedDate);
+                  const isCur = date.getMonth() === m;
+                  return (
+                    <div key={di} onClick={()=>setSelectedDate(isSel?null:date)}
+                      style={{borderRight:di<6?BD:"none", background:isSel?"#dbeafe":isT?"#EBF4FD":isCur?"#fff":"#fcfcfc", cursor:"pointer", boxSizing:"border-box", outline:isSel?"2px solid #378ADD":"none", outlineOffset:-1}}>
+                      <div style={{display:"flex",justifyContent:"center",marginTop:4}}>
+                        <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":!isCur?"#bbb":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:2, pointerEvents:"none"}}>
+                {slots.map((_, lvl) => {
+                  const rowTasks = assigns.filter(a => a.lvl === lvl);
+                  return (
+                    <div key={lvl} style={{display:"grid", gridTemplateColumns:"repeat(7,1fr)"}}>
+                      {rowTasks.map(a => {
+                        const si=sInfo(a.task.status);
+                        const ti=tInfo(types,a.task.type);
+                        const sk=a.task.status==="done"||a.task.status==="cancel";
+                        return (
+                          <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px"}}>
+                            <div onClick={(e)=>{e.stopPropagation();onTask(a.task);}}
+                              style={{
+                                marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
+                                padding:"2px 6px",
+                                borderRadius:`${a.isStart?4:0}px ${a.isEnd?4:0}px ${a.isEnd?4:0}px ${a.isStart?4:0}px`,
+                                background: rgba(ti.color,0.15),
+                                color: "#444",
+                                borderTop: `1px solid ${si.border}`,
+                                borderBottom: `1px solid ${si.border}`,
+                                borderLeft: a.isStart ? `3px solid ${si.border}` : "none",
+                                borderRight: a.isEnd ? `1px solid ${si.border}` : "none",
+                                fontSize:10, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textDecoration:sk?"line-through":"none", opacity:sk?0.6:1, textAlign:"left"
+                              }}>
+                              {a.task.dueTime ? `[${a.task.dueTime}] ` : ""}{a.task.title}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div style={{display:"flex",gap:12,marginTop:8,flexWrap:"wrap"}}>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{types.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:7,height:7,borderRadius:"50%",background:t.color}}/><span style={{fontSize:10,color:"#666"}}>{t.label}</span></div>)}</div>
@@ -299,48 +395,139 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   );
 }
 
+// ✨ 정렬 알고리즘 개편 (교육 일정 적용)
 function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   const [cur,setCur]=useState(new Date());
   const y=cur.getFullYear(),m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
-  const now=new Date(),weeks=[];
+  const now=new Date(); now.setHours(0,0,0,0);
+  const weeks=[];
   let day=1-fd;
-  while(day<=dim){const wk=[];for(let i=0;i<7;i++,day++)wk.push(day>0&&day<=dim?new Date(y,m,day):null);weeks.push(wk);}
+  while(day<=dim){
+    const wk=[];
+    for(let i=0;i<7;i++,day++) wk.push(new Date(y,m,day));
+    weeks.push(wk);
+  }
   const lbl=item=>{const t=ET.find(x=>x.key===item.target);const loc=item.type==="visit"&&item.region?`(${item.region})`:"";return`${t?t.short:"?"} ${item.nth}차 ${EF.find(x=>x.key===item.type)?.label||""}${loc}`;};
-  const mi=[...eduItems].filter(e=>{const sv=pld(e.startDate);return sv&&sv.getFullYear()===y&&sv.getMonth()===m;}).sort((a,b)=>a.startDate>b.startDate?1:-1);
+  
+  // 사이드바 정렬도 빠른 날짜 -> 빠른 시간순 적용
+  const mi=[...eduItems].filter(e=>{const sv=pld(e.startDate);return sv&&sv.getFullYear()===y&&sv.getMonth()===m;}).sort((a,b)=>{
+    if(a.startDate !== b.startDate) return a.startDate > b.startDate ? 1 : -1;
+    const tA = a.startTime || "23:59", tB = b.startTime || "23:59";
+    return tA.localeCompare(tB);
+  });
   const BD="1px solid #e0e0e0";
   
   const calGrid=(
-    <div style={{minWidth:0, flex:1}}>
+    <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column", height: "100%"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
         <button onClick={()=>setCur(new Date(y,m+1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>›</button>
       </div>
-      <div style={{border:BD,borderRadius:8,overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",borderBottom:BD}}>
-          {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none",background:"#fafafa"}}>{d}</div>)}
+      <div style={{flex: 1, border:BD, borderRadius:8, overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:BD, position:"sticky", top:0, zIndex:10, background:"#fafafa"}}>
+          {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none"}}>{d}</div>)}
         </div>
-        {weeks.map((wk,wi)=>(
-          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
-            {wk.map((date,di)=>{
-              if(!date)return<div key={`e${wi}${di}`} style={{minHeight:60,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
-              const items=eduItems.filter(e=>inR(date,e.startDate,e.endDate));
-              const isT=sameD(date,now);
-              const isSel=selectedDate&&sameD(date,selectedDate);
-              return(
-                <div key={`${wi}${di}`} onClick={()=>setSelectedDate(isSel ? null : date)} 
-                  style={{minHeight:60,padding:"2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#d1fae5":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #1D9E75":"none",outlineOffset:-1}}>
-                  <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
-                  </div>
-                  {/* 교육 일정 제한 없앰: 모든 items 순회 */}
-                  {items.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return<div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3px solid ${color}`,lineHeight:"14px"}}>{lbl(item)}</div>;})}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {weeks.map((wk,wi)=>{
+          const wkStart = wk[0];
+          const wkEnd = new Date(wk[6]); wkEnd.setHours(23,59,59,999);
+          
+          const dt = eduItems.filter(e => {
+             const sd = pld(e.startDate);
+             const ed = pld(e.endDate);
+             if(!sd||!ed) return false;
+             ed.setHours(23,59,59,999);
+             return sd <= wkEnd && ed >= wkStart;
+          }).sort((a,b)=>{
+             const sdA = pld(a.startDate), edA = pld(a.endDate);
+             const sdB = pld(b.startDate), edB = pld(b.endDate);
+             const spanA = edA - sdA;
+             const spanB = edB - sdB;
+             // 1. 긴 일정 -> 2. 시작일 -> 3. 빠른 시간
+             if(spanA !== spanB) return spanB - spanA;
+             if(sdA.getTime() !== sdB.getTime()) return sdA - sdB;
+             const tA = a.startTime || "23:59", tB = b.startTime || "23:59";
+             return tA.localeCompare(tB);
+          });
+
+          const slots = [];
+          const assigns = [];
+          dt.forEach(t => {
+             const sd = pld(t.startDate);
+             const ed = pld(t.endDate);
+             let sc = 0, ec = 6;
+             for(let i=0;i<7;i++){ if(sameD(sd,wk[i])) sc=i; if(sameD(ed,wk[i])) ec=i; }
+             if(sd < wkStart) sc = 0;
+             if(ed > wkEnd) ec = 6;
+             const span = ec - sc + 1;
+
+             let lvl = 0;
+             while(true){
+                if(!slots[lvl]) slots[lvl] = Array(7).fill(false);
+                let free = true;
+                for(let i=sc;i<=ec;i++) if(slots[lvl][i]) { free=false; break; }
+                if(free){
+                   for(let i=sc;i<=ec;i++) slots[lvl][i] = true;
+                   break;
+                }
+                lvl++;
+             }
+             assigns.push({task: t, lvl, sc, ec, span, isStart: sd>=wkStart, isEnd: ed<=wkEnd});
+          });
+
+          return(
+            <div key={wi} style={{position:"relative", display:"flex", flexDirection:"column", minHeight: 80, borderBottom: wi<weeks.length-1?BD:"none"}}>
+              <div style={{position:"absolute", inset:0, display:"grid", gridTemplateColumns:"repeat(7,1fr)"}}>
+                {wk.map((date, di) => {
+                  const isT = sameD(date, now);
+                  const isSel = selectedDate && sameD(date, selectedDate);
+                  const isCur = date.getMonth() === m;
+                  return (
+                    <div key={di} onClick={()=>setSelectedDate(isSel?null:date)}
+                      style={{borderRight:di<6?BD:"none", background:isSel?"#d1fae5":isT?"#EBF4FD":isCur?"#fff":"#fcfcfc", cursor:"pointer", boxSizing:"border-box", outline:isSel?"2px solid #1D9E75":"none", outlineOffset:-1}}>
+                      <div style={{display:"flex",justifyContent:"center",marginTop:4}}>
+                        <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":!isCur?"#bbb":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:2, pointerEvents:"none"}}>
+                {slots.map((_, lvl) => {
+                  const rowTasks = assigns.filter(a => a.lvl === lvl);
+                  return (
+                    <div key={lvl} style={{display:"grid", gridTemplateColumns:"repeat(7,1fr)"}}>
+                      {rowTasks.map(a => {
+                        const tc=ET.find(t=>t.key===a.task.target);
+                        const color=tc?.color||"#888";
+                        return (
+                          <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px"}}>
+                            <div onClick={(e)=>{e.stopPropagation();onItem(a.task);}}
+                              style={{
+                                marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
+                                padding:"2px 6px",
+                                borderRadius:`${a.isStart?4:0}px ${a.isEnd?4:0}px ${a.isEnd?4:0}px ${a.isStart?4:0}px`,
+                                background: rgba(color,0.15),
+                                color: color,
+                                borderTop: `1px solid ${color}`,
+                                borderBottom: `1px solid ${color}`,
+                                borderLeft: a.isStart ? `3px solid ${color}` : "none",
+                                borderRight: a.isEnd ? `1px solid ${color}` : "none",
+                                fontSize:10, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textAlign:"left"
+                              }}>
+                              {a.task.startTime ? `[${a.task.startTime}] ` : ""}{lbl(a.task)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div style={{display:"flex",gap:10,marginTop:8,flexWrap:"wrap"}}>{ET.map(t=><div key={t.key} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:t.color}}/><span style={{fontSize:10,color:"#666"}}>{t.short} = {t.label}</span></div>)}</div>
     </div>
@@ -356,8 +543,8 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
     </div>
   );
   return(
-    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%"}}>
-      <div style={{minWidth:0, flex:1}}>
+    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%", height: "calc(100vh - 140px)"}}>
+      <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden"}}>
         {calGrid}
         {selectedDate && <EduDayPanel date={selectedDate} items={eduItems} onItem={onItem} onAdd={()=>onAdd(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
@@ -366,10 +553,16 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   );
 }
 
+// ✨ 리스트/포커스 뷰 정렬 수정: 시작일 -> 빠른 시간순
 function FocusView({types,tasks,onTask}) {
   const now=new Date(),past=new Date(now),future=new Date(now);
   past.setDate(past.getDate()-7);future.setDate(future.getDate()+14);
-  const list=tasks.filter(t=>{const sv=pld(t.startDate||t.endDate),ev=pld(t.endDate||t.startDate);return sv&&sv<=future&&(ev||sv)>=past;}).sort((a,b)=>{const ea=a.endDate||a.startDate||"9999",eb=b.endDate||b.startDate||"9999";return ea>eb?1:ea<eb?-1:0;});
+  const list=tasks.filter(t=>{const sv=pld(t.startDate||t.endDate),ev=pld(t.endDate||t.startDate);return sv&&sv<=future&&(ev||sv)>=past;}).sort((a,b)=>{
+    const sdA = a.startDate||"9999", sdB = b.startDate||"9999";
+    if(sdA !== sdB) return sdA > sdB ? 1 : -1;
+    const tA = a.dueTime || "23:59", tB = b.dueTime || "23:59";
+    return tA.localeCompare(tB);
+  });
   return(
     <div>
       <div style={{fontSize:12,color:"#888",marginBottom:8}}>1주 전 ~ 2주 후 ({list.length}건)</div>
@@ -388,7 +581,13 @@ function TaskList({types,tasks,onTask,onAdd,onBulk}) {
   const [bType,setBType]=useState("");
   const [bStat,setBStat]=useState("");
   const [bPri,setBPri]=useState("");
-  const list=tasks.filter(t=>filter==="all"||(filter==="active"?t.status==="before"||t.status==="doing":filter===t.status)).filter(t=>tf==="all"||t.type===tf).sort((a,b)=>{const ea=a.endDate||a.startDate||"9999",eb=b.endDate||b.startDate||"9999";return ea>eb?1:ea<eb?-1:0;});
+  // 정렬 기준 업데이트
+  const list=tasks.filter(t=>filter==="all"||(filter==="active"?t.status==="before"||t.status==="doing":filter===t.status)).filter(t=>tf==="all"||t.type===tf).sort((a,b)=>{
+    const sdA = a.startDate||"9999", sdB = b.startDate||"9999";
+    if(sdA !== sdB) return sdA > sdB ? 1 : -1;
+    const tA = a.dueTime || "23:59", tB = b.dueTime || "23:59";
+    return tA.localeCompare(tB);
+  });
   const exit=()=>{setSelMode(false);setSel([]);setPanel(false);setBType("");setBStat("");setBPri("");};
   const apply=()=>{const ch={};if(bType)ch.type=bType;if(bStat)ch.status=bStat;if(bPri!=="")ch.priority=parseInt(bPri);if(!Object.keys(ch).length)return;onBulk(sel,ch);exit();};
   const fBtn=(v,l)=><button key={v} onClick={()=>setFilter(v)} style={{fontSize:11,padding:"3px 10px",borderRadius:20,border:`1px solid ${filter===v?"#1a1a1a":"#ddd"}`,background:filter===v?"#1a1a1a":"#fff",color:filter===v?"#fff":"#666",cursor:"pointer"}}>{l}</button>;
@@ -505,12 +704,12 @@ function App() {
   );
 
   const pcPlanner = (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%"}}>
-      <div style={{minWidth:0,width:"100%"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%", height: "calc(100vh - 140px)"}}>
+      <div style={{minWidth:0,width:"100%", height: "100%", overflow: "hidden"}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate} onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
-      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
+      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"100%",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
         <div style={{display:"flex",gap:4}}>
           {[["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:6,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
         </div>
