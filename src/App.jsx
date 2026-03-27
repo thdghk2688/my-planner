@@ -58,8 +58,9 @@ const eduFromDb = (r) => ({ id: r.id, target: r.target, type: r.type, nth: r.nth
 const typeToDb = (t, i) => ({id: t.key, key: t.key, label: t.label, color: t.color, sort_order: i});
 const typeFromDb = (r) => ({key: r.key, label: r.label, color: r.color});
 
-const ND=[["세종여고 강사카드 ppt 제출","2025/10/15","완료",0,""]]; // 예시 생략 (기존 ND 그대로 유지)
-const TD=[["세종시청 14:00~16:00","2025/10/23","출장","완료",""]]; // 예시 생략 (기존 TD 그대로 유지)
+// 초기 데이터 생략 (동일)
+const ND=[["세종여고 강사카드 ppt 제출","2025/10/15","완료",0,""]]; 
+const TD=[["세종시청 14:00~16:00","2025/10/23","출장","완료",""]]; 
 const INIT_TASKS = [...ND.map(r=>({id:gid(),title:r[0],type:"work",startDate:pND(r[1]),endDate:pND(r[1]),dueTime:"",priority:r[3],status:pStat(r[2]),note:r[4]})), ...TD.map(r=>({id:gid(),title:r[0],type:tType(r[2]),startDate:pND(r[1]),endDate:pND(r[1]),dueTime:"",priority:1,status:pStat(r[3]),note:r[4]}))];
 const INIT_EDU = [{id:gid(),target:"worker",type:"center",nth:1,startDate:"2026-03-25",endDate:"2026-03-26",startTime:"09:00",endTime:"17:00",region:"",place:"",lectures:[{id:gid(),subject:"식품위생 기초",instructor:"김강사"}],note:""}];
 
@@ -88,13 +89,14 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
       <div style={{display:"flex",alignItems:"center",gap:5}}>
         {selMode&&<div style={{width:13,height:13,borderRadius:3,border:`2px solid ${isSel?"#378ADD":"#ccc"}`,background:isSel?"#378ADD":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{isSel&&<span style={{color:"#fff",fontSize:8}}>✓</span>}</div>}
         {!selMode&&<div style={{width:5,height:5,borderRadius:"50%",background:ti.color,flexShrink:0}}/>}
-        <span style={{flex:1,fontSize:11,fontWeight:500,textDecoration:sk?"line-through":"none",color:sk?"#bbb":"#444",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
+        {/* 수정: textAlign: "left" 추가 */}
+        <span style={{flex:1,fontSize:11,fontWeight:500,textDecoration:sk?"line-through":"none",color:sk?"#bbb":"#444",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap", textAlign:"left"}}>{t.title}</span>
         {ov&&<span style={{fontSize:9,color:"#E24B4A",flexShrink:0}}>초과</span>}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2,paddingLeft:10,flexWrap:"wrap"}}>
         <span style={{fontSize:9,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-        {/* 수정 2번: 우선순위 배지 슬림화 */}
-        <span style={{fontSize:9,padding:"2px 4px",borderRadius:3,lineHeight:1,background:PC[t.priority]+"22",color:PC[t.priority]}}>{PL[t.priority]}</span>
+        {/* 수정: 우선순위 배지 슬림화 */}
+        <span style={{fontSize:9,padding:"1px 3px",borderRadius:3,background:PC[t.priority]+"22",color:PC[t.priority], display:"inline-block", lineHeight:"12px"}}>{PL[t.priority]}</span>
         {dl!==null&&!sk&&<span style={{fontSize:8,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
       </div>
     </div>
@@ -103,7 +105,7 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
 
 function TaskForm({types,initial,onSave,onClose,onDelete}) {
   const [f,setF] = useState(initial||{title:"",type:types[0]?.key||"work",startDate:tod(),endDate:tod(),dueTime:"",priority:1,status:"before",note:""});
-  // 수정 3번: 시작일 변경 시 종료일 동기화
+  // 시작일 변경 시 종료일 자동 동기화 유지
   const upd = (k,v) => setF(p => {
     const next = { ...p, [k]: v };
     if (k === "startDate") {
@@ -165,7 +167,6 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
   const all=eduItems||[];
   const aNth=(tgt,cid,sd)=>{const same=all.filter(e=>e.target===tgt&&e.id!==cid).sort((a,b)=>a.startDate>b.startDate?1:-1);const idx=same.findIndex(e=>e.startDate>(sd||"9999"));return(idx===-1?same.length:idx)+1;};
   const [f,setF]=useState(()=>initial||{target:"worker",type:"center",nth:aNth("worker",null,tod()),startDate:tod(),endDate:tod(),startTime:"09:00",endTime:"17:00",region:"",place:"",lectures:[{id:gid(),subject:"",instructor:""}],note:""});
-  // 수정 3번: 교육 일정에서도 시작일 변경 시 종료일 동기화
   const upd=(k,v)=>setF(p=>{
     const next = { ...p, [k]: v };
     if(k==="target"&&!isEdit) next.nth = aNth(v, null, p.startDate);
@@ -222,7 +223,6 @@ function DayPanel({date,tasks,types,onTask,onAdd,onClose}) {
   );
 }
 
-// 수정 4번: 교육 전용 하단 패널
 function EduDayPanel({date, items, onItem, onAdd, onClose}) {
   const dt = items.filter(e => inR(date, e.startDate, e.endDate)).sort((a,b)=>a.startDate>b.startDate?1:-1);
   const lbl = item => {
@@ -244,7 +244,7 @@ function EduDayPanel({date, items, onItem, onAdd, onClose}) {
           const tc=ET.find(t=>t.key===item.target);
           const color=tc?.color||"#888";
           return(
-            <div key={item.id} onClick={()=>onItem(item)} style={{padding:"8px 12px",borderRadius:8,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`4px solid ${color}`}}>
+            <div key={item.id} onClick={()=>onItem(item)} style={{padding:"8px 12px",borderRadius:8,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`4px solid ${color}`,textAlign:"left"}}>
               <div style={{fontSize:12,fontWeight:600,color}}>{lbl(item)}</div>
               <div style={{fontSize:11,color:"#666",marginTop:4}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}{item.type==="visit"&&item.place?` · ${item.place}`:""}</div>
               {item.lectures[0]?.subject&&<div style={{marginTop:4,display:"flex",flexDirection:"column",gap:2}}>{item.lectures.map((l,i)=><span key={l.id} style={{fontSize:11,color:"#666"}}>{i+1}. {l.subject}{l.instructor?` (${l.instructor})`:""}</span>)}</div>}
@@ -256,6 +256,7 @@ function EduDayPanel({date, items, onItem, onAdd, onClose}) {
   );
 }
 
+// 수정: 강제 높이, flex 속성을 걷어내어 정상적인 그리드 흐름 복원
 function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   const y=cur.getFullYear(),m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
@@ -264,28 +265,26 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   while(day<=dim){const wk=[];for(let i=0;i<7;i++,day++)wk.push(day>0&&day<=dim?new Date(y,m,day):null);weeks.push(wk);}
   const BD="1px solid #e0e0e0";
   return(
-    <div style={{display: "flex", flexDirection: "column", height: "100%"}}>
+    <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
         <button onClick={()=>setCur(new Date(y,m+1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>›</button>
       </div>
-      {/* 수정 1번: 캘린더 영역 전체가 꽉 차도록 flex: 1 적용 */}
-      <div style={{border:BD,borderRadius:8,overflow:"hidden",display: "flex", flexDirection: "column", flex: 1}}>
+      <div style={{border:BD,borderRadius:8,overflow:"hidden"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",borderBottom:BD}}>
           {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none",background:"#fafafa"}}>{d}</div>)}
         </div>
         {weeks.map((wk,wi)=>(
-          // 각 주(week) Row가 동일한 비율로 늘어나도록 flex: 1 할당
-          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))", flex: 1, minHeight: 60}}>
+          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
             {wk.map((date,di)=>{
-              if(!date)return<div key={`e${wi}${di}`} style={{borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
+              if(!date)return<div key={`e${wi}${di}`} style={{minHeight:60,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
               const dt=tasks.filter(t=>inR(date,t.startDate,t.endDate));
               const isT=sameD(date,now);
               const isSel=selectedDate&&sameD(date,selectedDate);
               return(
                 <div key={`${wi}${di}`} onClick={()=>setSelectedDate(isSel?null:date)}
-                  style={{padding:"2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #378ADD":"none",outlineOffset:-1}}>
+                  style={{minHeight:60,padding:"2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#dbeafe":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #378ADD":"none",outlineOffset:-1}}>
                   <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
@@ -305,6 +304,7 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   );
 }
 
+// 수정: 강제 높이 걷어내고 원래 구조 복원
 function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   const [cur,setCur]=useState(new Date());
   const y=cur.getFullYear(),m=cur.getMonth();
@@ -317,27 +317,26 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   const BD="1px solid #e0e0e0";
   
   const calGrid=(
-    <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column", height: "100%"}}>
+    <div style={{minWidth:0, flex:1}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
         <button onClick={()=>setCur(new Date(y,m+1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>›</button>
       </div>
-      {/* 수정 1번: 교육 캘린더 화면 꽉 차게 변경 */}
-      <div style={{border:BD,borderRadius:8,overflow:"hidden", display: "flex", flexDirection: "column", flex: 1}}>
+      <div style={{border:BD,borderRadius:8,overflow:"hidden"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",borderBottom:BD}}>
           {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none",background:"#fafafa"}}>{d}</div>)}
         </div>
         {weeks.map((wk,wi)=>(
-          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))", flex: 1, minHeight: 60}}>
+          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
             {wk.map((date,di)=>{
-              if(!date)return<div key={`e${wi}${di}`} style={{borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
+              if(!date)return<div key={`e${wi}${di}`} style={{minHeight:60,borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",background:"#f7f7f7"}}/>;
               const items=eduItems.filter(e=>inR(date,e.startDate,e.endDate));
               const isT=sameD(date,now);
-              const isSel=selectedDate&&sameD(date,selectedDate); // 선택 상태 확인
+              const isSel=selectedDate&&sameD(date,selectedDate);
               return(
                 <div key={`${wi}${di}`} onClick={()=>setSelectedDate(isSel ? null : date)} 
-                  style={{padding:"2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#d1fae5":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #1D9E75":"none",outlineOffset:-1}}>
+                  style={{minHeight:60,padding:"2px",borderRight:di<6?BD:"none",borderBottom:wi<weeks.length-1?BD:"none",cursor:"pointer",background:isSel?"#d1fae5":isT?"#EBF4FD":"#fff",boxSizing:"border-box",outline:isSel?"2px solid #1D9E75":"none",outlineOffset:-1}}>
                   <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
@@ -358,15 +357,14 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
       <strong style={{fontSize:13,display:"block",marginBottom:8}}>{m+1}월 교육 일정</strong>
       {mi.length===0&&<div style={{color:"#bbb",fontSize:12,textAlign:"center",padding:"1.5rem 0"}}>이 달 교육 없음</div>}
       <div style={{display:"flex",flexDirection:"column",gap:4}}>
-        {mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"6px 8px",borderRadius:7,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`}}><div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:11,fontWeight:600,color}}>{lbl(item)}</span></div><div style={{fontSize:9,color:"#666",marginTop:2}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}{item.type==="visit"&&item.place?` · ${item.place}`:""}</div></div>);})}
+        {mi.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return(<div key={item.id} onClick={()=>onItem(item)} style={{padding:"6px 8px",borderRadius:7,cursor:"pointer",background:rgba(color,0.10),border:`1px solid ${color}`,borderLeft:`3px solid ${color}`,textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:11,fontWeight:600,color}}>{lbl(item)}</span></div><div style={{fontSize:9,color:"#666",marginTop:2}}>{item.startDate}{item.endDate!==item.startDate?` ~ ${item.endDate}`:""} {item.startTime}~{item.endTime}{item.type==="visit"&&item.place?` · ${item.place}`:""}</div></div>);})}
       </div>
     </div>
   );
   return(
-    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%", height: "calc(100vh - 140px)"}}>
-      <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden"}}>
+    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%"}}>
+      <div style={{minWidth:0, flex:1}}>
         {calGrid}
-        {/* 수정 4번: 교육 캘린더 날짜 클릭 시 하단에 패널 노출 */}
         {selectedDate && <EduDayPanel date={selectedDate} items={eduItems} onItem={onItem} onAdd={()=>onAdd(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
       {sidebar}
@@ -420,7 +418,7 @@ function TaskList({types,tasks,onTask,onAdd,onBulk}) {
   );
 }
 
-function TypeSettings({types,onSave,onClose}) { /* 생략 없이 기존 코드 동일 (생략 처리됨) */
+function TypeSettings({types,onSave,onClose}) { 
   const [list,setList]=useState(()=>types.map(t=>({...t})));
   const [oc,setOc]=useState(null);
   const [el,setEl]=useState({});
@@ -456,7 +454,7 @@ function App() {
   const [loading,setLoading] = useState(true);
   const [calDate,setCalDate] = useState(new Date());
   const [selectedDate,setSelectedDate] = useState(null);
-  const [eduSelectedDate, setEduSelectedDate] = useState(null); // 수정 4번: 교육 캘린더용 선택 날짜
+  const [eduSelectedDate, setEduSelectedDate] = useState(null); 
   const [modal,setModal] = useState(null);
   const [mainTab,setMainTab] = useState("planner");
   const [subTab,setSubTab] = useState("focus");
@@ -488,7 +486,6 @@ function App() {
     load();
   },[]);
 
-  // 실시간 구독 (생략 없이 유지)
   useEffect(()=>{
     const ch1 = supabase.channel("tasks-changes").on("postgres_changes",{event:"*",schema:"public",table:"tasks"},()=>{supabase.from("tasks").select("*").order("start_date").then(({data})=>{if(data)setTasks(data.map(taskFromDb));});}).subscribe();
     const ch2 = supabase.channel("edu-changes").on("postgres_changes",{event:"*",schema:"public",table:"edu_items"},()=>{supabase.from("edu_items").select("*").order("start_date").then(({data})=>{if(data)setEduItems(data.map(eduFromDb));});}).subscribe();
@@ -506,7 +503,7 @@ function App() {
   const delEdu = async (id) => { const reordered = reorder(eduItems.filter(e=>e.id!==id)); setEduItems(reordered); await supabase.from("edu_items").delete().eq("id",id); for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id); showT("교육일정 삭제됨"); setModal(null); };
 
   const openNew = (date) => setModal({type:"new",initial:{title:"",type:types[0]?.key||"work",startDate:date?fmtD(date):tod(),endDate:date?fmtD(date):tod(),dueTime:"",priority:1,status:"before",note:""}});
-  const openEduNew = (date) => setModal({type:"edu-new",date:date?fmtD(date):tod()}); // 추가: 교육 일정 추가
+  const openEduNew = (date) => setModal({type:"edu-new",date:date?fmtD(date):tod()}); 
   const openEdit = (task) => setModal({type:"edit",task});
 
   if(loading) return(
@@ -514,12 +511,12 @@ function App() {
   );
 
   const pcPlanner = (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%",maxWidth:"100%",boxSizing:"border-box", height: "calc(100vh - 140px)"}}>
-      <div style={{minWidth:0,width:"100%",overflow:"hidden", height: "100%", display: "flex", flexDirection: "column"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%"}}>
+      <div style={{minWidth:0,width:"100%"}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate} onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
-      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"100%",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
+      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
         <div style={{display:"flex",gap:4}}>
           {[["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:6,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
         </div>
@@ -541,8 +538,9 @@ function App() {
     </>
   );
 
+  // 수정: 전체 레이아웃의 overflow 제거 및 minHeight 복원
   return(
-    <div style={{padding:mobile?"0.75rem":"1.5rem",height:"100vh",background:"#f0f0f0",boxSizing:"border-box", overflow:"hidden"}}>
+    <div style={{padding:mobile?"0.75rem":"1.5rem",minHeight:"100vh",background:"#f0f0f0",boxSizing:"border-box"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <h2 style={{margin:0,fontSize:17}}>My Planner</h2>
