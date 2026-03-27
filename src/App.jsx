@@ -58,7 +58,6 @@ const eduFromDb = (r) => ({ id: r.id, target: r.target, type: r.type, nth: r.nth
 const typeToDb = (t, i) => ({id: t.key, key: t.key, label: t.label, color: t.color, sort_order: i});
 const typeFromDb = (r) => ({key: r.key, label: r.label, color: r.color});
 
-// 초기 데이터 생략 (동일)
 const ND=[["세종여고 강사카드 ppt 제출","2025/10/15","완료",0,""]]; 
 const TD=[["세종시청 14:00~16:00","2025/10/23","출장","완료",""]]; 
 const INIT_TASKS = [...ND.map(r=>({id:gid(),title:r[0],type:"work",startDate:pND(r[1]),endDate:pND(r[1]),dueTime:"",priority:r[3],status:pStat(r[2]),note:r[4]})), ...TD.map(r=>({id:gid(),title:r[0],type:tType(r[2]),startDate:pND(r[1]),endDate:pND(r[1]),dueTime:"",priority:1,status:pStat(r[3]),note:r[4]}))];
@@ -89,13 +88,11 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
       <div style={{display:"flex",alignItems:"center",gap:5}}>
         {selMode&&<div style={{width:13,height:13,borderRadius:3,border:`2px solid ${isSel?"#378ADD":"#ccc"}`,background:isSel?"#378ADD":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{isSel&&<span style={{color:"#fff",fontSize:8}}>✓</span>}</div>}
         {!selMode&&<div style={{width:5,height:5,borderRadius:"50%",background:ti.color,flexShrink:0}}/>}
-        {/* 수정: textAlign: "left" 추가 */}
         <span style={{flex:1,fontSize:11,fontWeight:500,textDecoration:sk?"line-through":"none",color:sk?"#bbb":"#444",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap", textAlign:"left"}}>{t.title}</span>
         {ov&&<span style={{fontSize:9,color:"#E24B4A",flexShrink:0}}>초과</span>}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2,paddingLeft:10,flexWrap:"wrap"}}>
         <span style={{fontSize:9,color:"#888"}}>{t.startDate}{t.endDate&&t.endDate!==t.startDate?`~${t.endDate}`:""}{t.dueTime?` ${t.dueTime}`:""}</span>
-        {/* 수정: 우선순위 배지 슬림화 */}
         <span style={{fontSize:9,padding:"1px 3px",borderRadius:3,background:PC[t.priority]+"22",color:PC[t.priority], display:"inline-block", lineHeight:"12px"}}>{PL[t.priority]}</span>
         {dl!==null&&!sk&&<span style={{fontSize:8,color:ov?"#E24B4A":dl<=2?"#EF9F27":"#bbb"}}>{ov?`${Math.abs(dl)}일 초과`:dl===0?"오늘":"D-"+dl}</span>}
       </div>
@@ -105,7 +102,6 @@ function TaskBlock({t,types,onClick,selMode,isSel,onSel}) {
 
 function TaskForm({types,initial,onSave,onClose,onDelete}) {
   const [f,setF] = useState(initial||{title:"",type:types[0]?.key||"work",startDate:tod(),endDate:tod(),dueTime:"",priority:1,status:"before",note:""});
-  // 시작일 변경 시 종료일 자동 동기화 유지
   const upd = (k,v) => setF(p => {
     const next = { ...p, [k]: v };
     if (k === "startDate") {
@@ -256,7 +252,6 @@ function EduDayPanel({date, items, onItem, onAdd, onClose}) {
   );
 }
 
-// 수정: 강제 높이, flex 속성을 걷어내어 정상적인 그리드 흐름 복원
 function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   const y=cur.getFullYear(),m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
@@ -288,8 +283,8 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                   <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
-                  {dt.slice(0,3).map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return<div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:"#444",border:`1px solid ${si.border}`,borderLeft:`3px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1,textAlign:"left",lineHeight:"14px"}}>{t.title}</div>;})}
-                  {dt.length>3&&<div style={{fontSize:8,color:"#aaa",paddingLeft:2}}>+{dt.length-3}</div>}
+                  {/* 일정 제한 없앰: 모든 dt 순회 */}
+                  {dt.map(t=>{const si=sInfo(t.status);const ti=tInfo(types,t.type);const sk=t.status==="done"||t.status==="cancel";return<div key={t.id} onClick={e=>{e.stopPropagation();onTask(t);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(ti.color,0.15),color:"#444",border:`1px solid ${si.border}`,borderLeft:`3px solid ${si.border}`,textDecoration:sk?"line-through":"none",opacity:sk?0.6:1,textAlign:"left",lineHeight:"14px"}}>{t.title}</div>;})}
                 </div>
               );
             })}
@@ -304,7 +299,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   );
 }
 
-// 수정: 강제 높이 걷어내고 원래 구조 복원
 function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   const [cur,setCur]=useState(new Date());
   const y=cur.getFullYear(),m=cur.getMonth();
@@ -340,8 +334,8 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                   <div style={{display:"flex",justifyContent:"center",marginBottom:1}}>
                     <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:isT?"#378ADD":"transparent",fontSize:10,fontWeight:isT?600:400,color:isT?"#fff":di===0?"#E24B4A":di===6?"#378ADD":"#1a1a1a"}}>{date.getDate()}</span>
                   </div>
-                  {items.slice(0,3).map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return<div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3px solid ${color}`,lineHeight:"14px"}}>{lbl(item)}</div>;})}
-                  {items.length>3&&<div style={{fontSize:8,color:"#aaa",paddingLeft:2}}>+{items.length-3}</div>}
+                  {/* 교육 일정 제한 없앰: 모든 items 순회 */}
+                  {items.map(item=>{const tc=ET.find(t=>t.key===item.target);const color=tc?.color||"#888";return<div key={item.id} onClick={e=>{e.stopPropagation();onItem(item);}} style={{fontSize:9,padding:"0px 3px 0px 4px",marginBottom:1,borderRadius:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",background:rgba(color,0.15),color,border:`1px solid ${color}`,borderLeft:`3px solid ${color}`,lineHeight:"14px"}}>{lbl(item)}</div>;})}
                 </div>
               );
             })}
@@ -538,7 +532,6 @@ function App() {
     </>
   );
 
-  // 수정: 전체 레이아웃의 overflow 제거 및 minHeight 복원
   return(
     <div style={{padding:mobile?"0.75rem":"1.5rem",minHeight:"100vh",background:"#f0f0f0",boxSizing:"border-box"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
