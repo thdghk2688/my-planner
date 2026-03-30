@@ -196,7 +196,6 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
   );
 }
 
-// ✨ 패널 정렬 수정: 마감 시간(dueTime) 빠른 순서
 function DayPanel({date,tasks,types,onTask,onAdd,onClose}) {
   const dt=tasks.filter(t=>inR(date,t.startDate,t.endDate)).sort((a,b)=>{
     const timeA = a.dueTime || "23:59";
@@ -220,7 +219,6 @@ function DayPanel({date,tasks,types,onTask,onAdd,onClose}) {
   );
 }
 
-// ✨ 패널 정렬 수정: 시작 시간(startTime) 빠른 순서
 function EduDayPanel({date, items, onItem, onAdd, onClose}) {
   const dt = items.filter(e => inR(date, e.startDate, e.endDate)).sort((a,b)=>{
     const timeA = a.startTime || "23:59";
@@ -258,7 +256,6 @@ function EduDayPanel({date, items, onItem, onAdd, onClose}) {
   );
 }
 
-// ✨ 정렬 알고리즘 전면 개편: 1.긴일정순 -> 2.빠른시작일순 -> 3.빠른마감시간순
 function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   const y=cur.getFullYear(),m=cur.getMonth();
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
@@ -298,11 +295,8 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
              const sdB = pld(b.startDate||b.endDate), edB = pld(b.endDate||b.startDate);
              const spanA = edA - sdA;
              const spanB = edB - sdB;
-             // 1순위: 기간이 긴 일정 먼저 (내림차순)
              if(spanA !== spanB) return spanB - spanA; 
-             // 2순위: 시작일 빠른 순 (오름차순)
              if(sdA.getTime() !== sdB.getTime()) return sdA - sdB; 
-             // 3순위: 마감 시간 빠른 순 (오름차순, 시간 없으면 맨 뒤로)
              const tA = a.dueTime || "23:59";
              const tB = b.dueTime || "23:59";
              return tA.localeCompare(tB); 
@@ -350,7 +344,8 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                   );
                 })}
               </div>
-              <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:2, pointerEvents:"none"}}>
+              {/* ✨ 수정: 갭(gap)을 1로 줄임 */}
+              <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:1, pointerEvents:"none"}}>
                 {slots.map((_, lvl) => {
                   const rowTasks = assigns.filter(a => a.lvl === lvl);
                   return (
@@ -364,7 +359,9 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                             <div onClick={(e)=>{e.stopPropagation();onTask(a.task);}}
                               style={{
                                 marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
-                                padding:"2px 6px",
+                                /* ✨ 수정: 위아래 패딩(padding) 최소화 및 줄간격(lineHeight) 타이트하게 고정 */
+                                padding:"1px 4px",
+                                lineHeight:"14px",
                                 borderRadius:`${a.isStart?4:0}px ${a.isEnd?4:0}px ${a.isEnd?4:0}px ${a.isStart?4:0}px`,
                                 background: rgba(ti.color,0.15),
                                 color: "#444",
@@ -395,7 +392,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   );
 }
 
-// ✨ 정렬 알고리즘 개편 (교육 일정 적용)
 function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   const [cur,setCur]=useState(new Date());
   const y=cur.getFullYear(),m=cur.getMonth();
@@ -410,7 +406,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   }
   const lbl=item=>{const t=ET.find(x=>x.key===item.target);const loc=item.type==="visit"&&item.region?`(${item.region})`:"";return`${t?t.short:"?"} ${item.nth}차 ${EF.find(x=>x.key===item.type)?.label||""}${loc}`;};
   
-  // 사이드바 정렬도 빠른 날짜 -> 빠른 시간순 적용
   const mi=[...eduItems].filter(e=>{const sv=pld(e.startDate);return sv&&sv.getFullYear()===y&&sv.getMonth()===m;}).sort((a,b)=>{
     if(a.startDate !== b.startDate) return a.startDate > b.startDate ? 1 : -1;
     const tA = a.startTime || "23:59", tB = b.startTime || "23:59";
@@ -444,7 +439,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
              const sdB = pld(b.startDate), edB = pld(b.endDate);
              const spanA = edA - sdA;
              const spanB = edB - sdB;
-             // 1. 긴 일정 -> 2. 시작일 -> 3. 빠른 시간
              if(spanA !== spanB) return spanB - spanA;
              if(sdA.getTime() !== sdB.getTime()) return sdA - sdB;
              const tA = a.startTime || "23:59", tB = b.startTime || "23:59";
@@ -493,7 +487,8 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                   );
                 })}
               </div>
-              <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:2, pointerEvents:"none"}}>
+              {/* ✨ 수정: 갭(gap)을 1로 줄임 */}
+              <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:1, pointerEvents:"none"}}>
                 {slots.map((_, lvl) => {
                   const rowTasks = assigns.filter(a => a.lvl === lvl);
                   return (
@@ -506,7 +501,9 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                             <div onClick={(e)=>{e.stopPropagation();onItem(a.task);}}
                               style={{
                                 marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
-                                padding:"2px 6px",
+                                /* ✨ 수정: 위아래 패딩(padding) 최소화 및 줄간격(lineHeight) 타이트하게 고정 */
+                                padding:"1px 4px",
+                                lineHeight:"14px",
                                 borderRadius:`${a.isStart?4:0}px ${a.isEnd?4:0}px ${a.isEnd?4:0}px ${a.isStart?4:0}px`,
                                 background: rgba(color,0.15),
                                 color: color,
@@ -553,7 +550,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   );
 }
 
-// ✨ 리스트/포커스 뷰 정렬 수정: 시작일 -> 빠른 시간순
 function FocusView({types,tasks,onTask}) {
   const now=new Date(),past=new Date(now),future=new Date(now);
   past.setDate(past.getDate()-7);future.setDate(future.getDate()+14);
@@ -581,7 +577,6 @@ function TaskList({types,tasks,onTask,onAdd,onBulk}) {
   const [bType,setBType]=useState("");
   const [bStat,setBStat]=useState("");
   const [bPri,setBPri]=useState("");
-  // 정렬 기준 업데이트
   const list=tasks.filter(t=>filter==="all"||(filter==="active"?t.status==="before"||t.status==="doing":filter===t.status)).filter(t=>tf==="all"||t.type===tf).sort((a,b)=>{
     const sdA = a.startDate||"9999", sdB = b.startDate||"9999";
     if(sdA !== sdB) return sdA > sdB ? 1 : -1;
