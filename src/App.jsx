@@ -48,7 +48,6 @@ const rgba = (hex,a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.sli
 const tInfo = (types,key) => types.find(t=>t.key===key)||types[0]||{color:"#888",label:"기타"};
 const sInfo = (key) => SL.find(s=>s.key===key)||SL[0];
 const pStat = (s) => { if(!s) return "before"; if(s==="완료") return "done"; if(s==="진행") return "doing"; if(s==="취소"||s==="보류") return "cancel"; return "before"; };
-const tType = (f) => { if(!f) return "etc"; if(f.includes("체험관")) return "exhibition"; if(f.includes("식품안전교육센터")) return "edu_center"; if(f.includes("출장")) return "trip"; if(f.includes("교육운영단")) return "edu_ops"; if(f.includes("업무협조")) return "cooperation"; if(f.includes("현지실사")) return "field"; return "etc"; };
 
 const taskToDb = (t) => ({ id: t.id, title: t.title, type: t.type, start_date: t.startDate, end_date: t.endDate, due_time: t.dueTime||"", priority: t.priority, status: t.status, note: t.note||"" });
 const taskFromDb = (r) => ({ id: r.id, title: r.title, type: r.type, startDate: r.start_date, endDate: r.end_date, dueTime: r.due_time||"", priority: r.priority, status: r.status, note: r.note||"" });
@@ -270,13 +269,13 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
   const BD="1px solid #e0e0e0";
 
   return(
-    <div style={{display: "flex", flexDirection: "column", height: "100%"}}>
+    <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
         <button onClick={()=>setCur(new Date(y,m+1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>›</button>
       </div>
-      <div style={{flex: 1, border:BD, borderRadius:8, overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column"}}>
+      <div style={{border:BD, borderRadius:8, overflow:"hidden", display:"flex", flexDirection:"column"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:BD, position:"sticky", top:0, zIndex:10, background:"#fafafa"}}>
           {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none"}}>{d}</div>)}
         </div>
@@ -344,7 +343,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                   );
                 })}
               </div>
-              {/* ✨ 수정: 갭(gap)을 1로 줄임 */}
               <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:1, pointerEvents:"none"}}>
                 {slots.map((_, lvl) => {
                   const rowTasks = assigns.filter(a => a.lvl === lvl);
@@ -359,7 +357,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                             <div onClick={(e)=>{e.stopPropagation();onTask(a.task);}}
                               style={{
                                 marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
-                                /* ✨ 수정: 위아래 패딩(padding) 최소화 및 줄간격(lineHeight) 타이트하게 고정 */
                                 padding:"1px 4px",
                                 lineHeight:"14px",
                                 borderRadius:`${a.isStart?4:0}px ${a.isEnd?4:0}px ${a.isEnd?4:0}px ${a.isStart?4:0}px`,
@@ -414,13 +411,13 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
   const BD="1px solid #e0e0e0";
   
   const calGrid=(
-    <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column", height: "100%"}}>
+    <div style={{minWidth:0, flex:1}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>‹</button>
         <strong>{y}년 {m+1}월</strong>
         <button onClick={()=>setCur(new Date(y,m+1,1))} style={{background:"none",border:"1px solid #ddd",borderRadius:8,padding:"4px 12px",fontSize:15,cursor:"pointer"}}>›</button>
       </div>
-      <div style={{flex: 1, border:BD, borderRadius:8, overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column"}}>
+      <div style={{border:BD, borderRadius:8, overflow:"hidden", display:"flex", flexDirection:"column"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:BD, position:"sticky", top:0, zIndex:10, background:"#fafafa"}}>
           {WDAYS.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,padding:"6px 0",color:i===0?"#E24B4A":i===6?"#378ADD":"#666",borderRight:i<6?BD:"none"}}>{d}</div>)}
         </div>
@@ -487,7 +484,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                   );
                 })}
               </div>
-              {/* ✨ 수정: 갭(gap)을 1로 줄임 */}
               <div style={{position:"relative", zIndex:1, marginTop: 28, paddingBottom: 6, display:"flex", flexDirection:"column", gap:1, pointerEvents:"none"}}>
                 {slots.map((_, lvl) => {
                   const rowTasks = assigns.filter(a => a.lvl === lvl);
@@ -501,7 +497,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                             <div onClick={(e)=>{e.stopPropagation();onItem(a.task);}}
                               style={{
                                 marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
-                                /* ✨ 수정: 위아래 패딩(padding) 최소화 및 줄간격(lineHeight) 타이트하게 고정 */
                                 padding:"1px 4px",
                                 lineHeight:"14px",
                                 borderRadius:`${a.isStart?4:0}px ${a.isEnd?4:0}px ${a.isEnd?4:0}px ${a.isStart?4:0}px`,
@@ -540,8 +535,8 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
     </div>
   );
   return(
-    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%", height: "calc(100vh - 140px)"}}>
-      <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden"}}>
+    <div style={{display:"flex",gap:16,alignItems:"start",width:"100%"}}>
+      <div style={{minWidth:0, flex:1, display: "flex", flexDirection: "column"}}>
         {calGrid}
         {selectedDate && <EduDayPanel date={selectedDate} items={eduItems} onItem={onItem} onAdd={()=>onAdd(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
@@ -699,12 +694,12 @@ function App() {
   );
 
   const pcPlanner = (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%", height: "calc(100vh - 140px)"}}>
-      <div style={{minWidth:0,width:"100%", height: "100%", overflow: "hidden"}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 250px",gap:16,alignItems:"start",width:"100%"}}>
+      <div style={{minWidth:0,width:"100%"}}>
         <CalGrid types={types} tasks={tasks} cur={calDate} setCur={setCalDate} onTask={openEdit} selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
         {selectedDate&&<DayPanel date={selectedDate} tasks={tasks} types={types} onTask={openEdit} onAdd={()=>openNew(selectedDate)} onClose={()=>setSelectedDate(null)}/>}
       </div>
-      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"100%",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
+      <div style={{width:250,flexShrink:0,background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"12px",height:"calc(100vh - 140px)",display:"flex",flexDirection:"column",gap:8,position:"sticky",top:16}}>
         <div style={{display:"flex",gap:4}}>
           {[["focus","포커스"],["list","목록"]].map(([v,l])=><button key={v} onClick={()=>setSubTab(v)} style={{flex:1,padding:6,borderRadius:8,border:"1px solid #ddd",background:subTab===v?"#1a1a1a":"#fff",color:subTab===v?"#fff":"#666",cursor:"pointer",fontSize:12}}>{l}</button>)}
         </div>
