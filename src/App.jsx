@@ -353,7 +353,8 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                         const ti=tInfo(types,a.task.type);
                         const sk=a.task.status==="done"||a.task.status==="cancel";
                         return (
-                          <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px"}}>
+                          /* 여기에 minWidth: 0 과 overflow: hidden 추가 */
+                          <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px", minWidth: 0, overflow: "hidden"}}>
                             <div onClick={(e)=>{e.stopPropagation();onTask(a.task);}}
                               style={{
                                 marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
@@ -366,7 +367,8 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                                 borderBottom: `1px solid ${si.border}`,
                                 borderLeft: a.isStart ? `3px solid ${si.border}` : "none",
                                 borderRight: a.isEnd ? `1px solid ${si.border}` : "none",
-                                fontSize:10, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textDecoration:sk?"line-through":"none", opacity:sk?0.6:1, textAlign:"left"
+                                /* 여기에 display: "block" 추가 */
+                                fontSize:10, display: "block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textDecoration:sk?"line-through":"none", opacity:sk?0.6:1, textAlign:"left"
                               }}>
                               {a.task.dueTime ? `[${a.task.dueTime}] ` : ""}{a.task.title}
                             </div>
@@ -493,7 +495,8 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                         const tc=ET.find(t=>t.key===a.task.target);
                         const color=tc?.color||"#888";
                         return (
-                          <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px"}}>
+                          /* 여기에 minWidth: 0 과 overflow: hidden 추가 */
+                          <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px", minWidth: 0, overflow: "hidden"}}>
                             <div onClick={(e)=>{e.stopPropagation();onItem(a.task);}}
                               style={{
                                 marginLeft: a.isStart?2:0, marginRight: a.isEnd?2:0,
@@ -506,7 +509,8 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                                 borderBottom: `1px solid ${color}`,
                                 borderLeft: a.isStart ? `3px solid ${color}` : "none",
                                 borderRight: a.isEnd ? `1px solid ${color}` : "none",
-                                fontSize:10, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textAlign:"left"
+                                /* 여기에 display: "block" 추가 */
+                                fontSize:10, display: "block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textAlign:"left"
                               }}>
                               {a.task.startTime ? `[${a.task.startTime}] ` : ""}{lbl(a.task)}
                             </div>
