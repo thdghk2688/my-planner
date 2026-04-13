@@ -47,7 +47,6 @@ const inR = (day,s,e) => { const sd=pld(s),ed=pld(e); if(!sd) return false; cons
 const rgba = (hex,a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
 const tInfo = (types,key) => types.find(t=>t.key===key)||types[0]||{color:"#888",label:"기타"};
 const sInfo = (key) => SL.find(s=>s.key===key)||SL[0];
-const pStat = (s) => { if(!s) return "before"; if(s==="완료") return "done"; if(s==="진행") return "doing"; if(s==="취소"||s==="보류") return "cancel"; return "before"; };
 
 const taskToDb = (t) => ({ id: t.id, title: t.title, type: t.type, start_date: t.startDate, end_date: t.endDate, due_time: t.dueTime||"", priority: t.priority, status: t.status, note: t.note||"" });
 const taskFromDb = (r) => ({ id: r.id, title: r.title, type: r.type, startDate: r.start_date, endDate: r.end_date, dueTime: r.due_time||"", priority: r.priority, status: r.status, note: r.note||"" });
@@ -55,9 +54,12 @@ const eduToDb = (e) => ({ id: e.id, target: e.target, type: e.type, nth: e.nth, 
 const eduFromDb = (r) => ({ id: r.id, target: r.target, type: r.type, nth: r.nth, startDate: r.start_date, endDate: r.end_date, startTime: r.start_time, endTime: r.end_time, region: r.region||"", place: r.place||"", lectures: r.lectures||[], note: r.note||"" });
 const typeToDb = (t, i) => ({id: t.key, key: t.key, label: t.label, color: t.color, sort_order: i});
 const typeFromDb = (r) => ({key: r.key, label: r.label, color: r.color});
+const memoToDb = (m) => ({ id: m.id, title: m.title, content: m.content, created_at: m.createdAt });
+const memoFromDb = (r) => ({ id: r.id, title: r.title, content: r.content, createdAt: r.created_at });
 
 const INIT_TASKS = []; 
 const INIT_EDU = [];
+const INIT_MEMOS = [];
 
 function Overlay({children,onClose}) {
   return (
@@ -191,6 +193,52 @@ function EduForm({initial,eduItems,onSave,onClose,onDelete}) {
           <button onClick={()=>onSave(f)} style={{flex:2,padding:"7px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>저장</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MemoForm({initial, onSave, onClose, onDelete}) {
+  const isEdit = !!onDelete;
+  const [f, setF] = useState(initial || { title: "", content: "", createdAt: fmtD(new Date()) });
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <strong style={{fontSize:15}}>{isEdit ? "메모 수정" : "새 메모 작성"}</strong>
+        <button onClick={onClose} style={{border:"none",background:"none",fontSize:20,cursor:"pointer"}}>×</button>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <div>
+          <div style={{fontSize:11,color:"#666",marginBottom:3}}>제목</div>
+          <input value={f.title} onChange={e=>setF({...f, title: e.target.value})} placeholder="업무 팁, 참고 사항 등..." style={{width:"100%",padding:"8px 10px",border:"1px solid #ccc",borderLeft:"3px solid #1A3A6B",borderRadius:8,fontSize:13,boxSizing:"border-box"}}/>
+        </div>
+        <div>
+          <div style={{fontSize:11,color:"#666",marginBottom:3}}>내용</div>
+          <textarea value={f.content} onChange={e=>setF({...f, content: e.target.value})} placeholder="내용을 입력하세요." rows={8} style={{width:"100%",padding:"8px 10px",border:"1px solid #ccc",borderRadius:8,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:4}}>
+          {isEdit && <button onClick={onDelete} style={{padding:"7px 12px",background:"#fff0f0",color:"#c00",border:"1px solid #fcc",borderRadius:8,cursor:"pointer",fontSize:13}}>삭제</button>}
+          <button onClick={onClose} style={{flex:1,padding:"7px",background:"#f5f5f5",border:"1px solid #ddd",borderRadius:8,cursor:"pointer",fontSize:13}}>취소</button>
+          <button onClick={()=>{if(f.title.trim()) onSave(f);}} style={{flex:2,padding:"7px",background:"#1A3A6B",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:600,fontSize:13}}>저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MemoBoard({memos, onAdd, onEdit}) {
+  return (
+    <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap: 16, width: "100%", alignContent: "start"}}>
+      <div onClick={onAdd} style={{background:"#fdfdfd", border:"1.5px dashed #ccc", borderRadius:10, padding:20, minHeight:120, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#1A3A6B", fontWeight:600, fontSize:14, transition:"all 0.2s"}}>
+        + 새 메모 작성
+      </div>
+      {memos.map(m => (
+        <div key={m.id} onClick={()=>onEdit(m)} style={{background:"#fff", border:"1px solid #e0e0e0", borderTop:"4px solid #1A3A6B", borderRadius:10, padding:16, cursor:"pointer", boxShadow:"0 2px 8px rgba(0,0,0,0.03)", display:"flex", flexDirection:"column"}}>
+          <div style={{fontSize:11, color:"#999", marginBottom:6}}>{m.createdAt}</div>
+          <div style={{fontSize:14, fontWeight:600, color:"#222", marginBottom:8, overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical"}}>{m.title}</div>
+          <div style={{fontSize:12, color:"#555", whiteSpace:"pre-wrap", wordBreak:"break-word", lineHeight:1.6, flex:1, overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:4, WebkitBoxOrient:"vertical"}}>{m.content}</div>
+        </div>
+      ))}
+      {memos.length === 0 && <div style={{gridColumn:"1/-1", textAlign:"center", padding:"3rem", color:"#bbb", fontSize:14}}>작성된 메모가 없습니다. 첫 메모를 작성해보세요!</div>}
     </div>
   );
 }
@@ -353,7 +401,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                         const ti=tInfo(types,a.task.type);
                         const sk=a.task.status==="done"||a.task.status==="cancel";
                         return (
-                          /* 여기에 minWidth: 0 과 overflow: hidden 추가 */
                           <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px", minWidth: 0, overflow: "hidden"}}>
                             <div onClick={(e)=>{e.stopPropagation();onTask(a.task);}}
                               style={{
@@ -367,7 +414,6 @@ function CalGrid({types,tasks,cur,setCur,onTask,selectedDate,setSelectedDate}) {
                                 borderBottom: `1px solid ${si.border}`,
                                 borderLeft: a.isStart ? `3px solid ${si.border}` : "none",
                                 borderRight: a.isEnd ? `1px solid ${si.border}` : "none",
-                                /* 여기에 display: "block" 추가 */
                                 fontSize:10, display: "block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textDecoration:sk?"line-through":"none", opacity:sk?0.6:1, textAlign:"left"
                               }}>
                               {a.task.dueTime ? `[${a.task.dueTime}] ` : ""}{a.task.title}
@@ -457,14 +503,14 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
 
              let lvl = 0;
              while(true){
-                if(!slots[lvl]) slots[lvl] = Array(7).fill(false);
-                let free = true;
-                for(let i=sc;i<=ec;i++) if(slots[lvl][i]) { free=false; break; }
-                if(free){
-                   for(let i=sc;i<=ec;i++) slots[lvl][i] = true;
-                   break;
-                }
-                lvl++;
+                 if(!slots[lvl]) slots[lvl] = Array(7).fill(false);
+                 let free = true;
+                 for(let i=sc;i<=ec;i++) if(slots[lvl][i]) { free=false; break; }
+                 if(free){
+                    for(let i=sc;i<=ec;i++) slots[lvl][i] = true;
+                    break;
+                 }
+                 lvl++;
              }
              assigns.push({task: t, lvl, sc, ec, span, isStart: sd>=wkStart, isEnd: ed<=wkEnd});
           });
@@ -495,7 +541,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                         const tc=ET.find(t=>t.key===a.task.target);
                         const color=tc?.color||"#888";
                         return (
-                          /* 여기에 minWidth: 0 과 overflow: hidden 추가 */
                           <div key={a.task.id} style={{gridColumn: `${a.sc + 1} / span ${a.span}`, pointerEvents: "auto", padding:"0 2px", minWidth: 0, overflow: "hidden"}}>
                             <div onClick={(e)=>{e.stopPropagation();onItem(a.task);}}
                               style={{
@@ -509,7 +554,6 @@ function EduGrid({eduItems, onAdd, onItem, selectedDate, setSelectedDate}) {
                                 borderBottom: `1px solid ${color}`,
                                 borderLeft: a.isStart ? `3px solid ${color}` : "none",
                                 borderRight: a.isEnd ? `1px solid ${color}` : "none",
-                                /* 여기에 display: "block" 추가 */
                                 fontSize:10, display: "block", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", cursor:"pointer", textAlign:"left"
                               }}>
                               {a.task.startTime ? `[${a.task.startTime}] ` : ""}{lbl(a.task)}
@@ -638,6 +682,7 @@ function App() {
   const [tasks,setTasks] = useState([]);
   const [eduItems,setEduItems] = useState([]);
   const [types,setTypes] = useState(TYPES0);
+  const [memos, setMemos] = useState([]);
   const [loading,setLoading] = useState(true);
   const [calDate,setCalDate] = useState(new Date());
   const [selectedDate,setSelectedDate] = useState(null);
@@ -667,6 +712,12 @@ function App() {
         const {data:tyd} = await supabase.from("app_types").select("*").order("sort_order");
         if(tyd&&tyd.length>0) setTypes(tyd.map(typeFromDb));
         else { await supabase.from("app_types").insert(TYPES0.map(typeToDb)); setTypes(TYPES0); }
+
+        try {
+          const {data:md, error} = await supabase.from("memos").select("*").order("created_at", {ascending: false});
+          if(!error && md) setMemos(md.map(memoFromDb));
+        } catch(e) { console.log("메모 테이블이 아직 없습니다."); }
+
       } catch(e) { console.error(e); }
       setLoading(false);
     };
@@ -677,7 +728,8 @@ function App() {
     const ch1 = supabase.channel("tasks-changes").on("postgres_changes",{event:"*",schema:"public",table:"tasks"},()=>{supabase.from("tasks").select("*").order("start_date").then(({data})=>{if(data)setTasks(data.map(taskFromDb));});}).subscribe();
     const ch2 = supabase.channel("edu-changes").on("postgres_changes",{event:"*",schema:"public",table:"edu_items"},()=>{supabase.from("edu_items").select("*").order("start_date").then(({data})=>{if(data)setEduItems(data.map(eduFromDb));});}).subscribe();
     const ch3 = supabase.channel("types-changes").on("postgres_changes",{event:"*",schema:"public",table:"app_types"},()=>{supabase.from("app_types").select("*").order("sort_order").then(({data})=>{if(data)setTypes(data.map(typeFromDb));});}).subscribe();
-    return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2);supabase.removeChannel(ch3);};
+    const ch4 = supabase.channel("memos-changes").on("postgres_changes",{event:"*",schema:"public",table:"memos"},()=>{supabase.from("memos").select("*").order("created_at",{ascending:false}).then(({data})=>{if(data)setMemos(data.map(memoFromDb));});}).subscribe();
+    return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2);supabase.removeChannel(ch3);supabase.removeChannel(ch4);};
   },[]);
 
   const saveTask = async (form) => { const id = modal?.task?.id || form.id || gid(); const task = {...form, id}; const row = taskToDb(task); if(modal?.type==="edit") { setTasks(prev => prev.map(t => t.id === id ? task : t)); await supabase.from("tasks").update(row).eq("id", id); } else { setTasks(prev => [...prev, task]); await supabase.from("tasks").insert(row); } showT("저장됨"); setModal(null); };
@@ -689,9 +741,13 @@ function App() {
   const saveEdu = async (form) => { const reordered = reorder(modal?.type==="edu-edit" ? eduItems.map(e=>e.id===modal.item.id?{...e,...form}:e) : [...eduItems,{id:gid(),...form}]); setEduItems(reordered); if(modal?.type==="edu-edit") { const row = eduToDb(reordered.find(e=>e.id===modal.item.id)); await supabase.from("edu_items").update(row).eq("id",row.id); for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id); } else { const newItem = reordered.find(e=>!eduItems.find(x=>x.id===e.id)); if(newItem) await supabase.from("edu_items").insert(eduToDb(newItem)); for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id); } showT("교육일정 저장됨"); setModal(null); };
   const delEdu = async (id) => { const reordered = reorder(eduItems.filter(e=>e.id!==id)); setEduItems(reordered); await supabase.from("edu_items").delete().eq("id",id); for(const e of reordered) await supabase.from("edu_items").update({nth:e.nth}).eq("id",e.id); showT("교육일정 삭제됨"); setModal(null); };
 
+  const saveMemo = async (form) => { const id = modal?.item?.id || gid(); const memo = {...form, id}; const row = memoToDb(memo); if(modal?.type==="memo-edit") { setMemos(prev => prev.map(m => m.id === id ? memo : m)); await supabase.from("memos").update(row).eq("id", id); } else { setMemos(prev => [memo, ...prev]); await supabase.from("memos").insert(row); } showT("메모 저장됨"); setModal(null); };
+  const delMemo = async (id) => { setMemos(prev => prev.filter(m => m.id !== id)); await supabase.from("memos").delete().eq("id", id); showT("메모 삭제됨"); setModal(null); };
+
   const openNew = (date) => setModal({type:"new",initial:{title:"",type:types[0]?.key||"work",startDate:date?fmtD(date):tod(),endDate:date?fmtD(date):tod(),dueTime:"",priority:1,status:"before",note:""}});
   const openEduNew = (date) => setModal({type:"edu-new",date:date?fmtD(date):tod()}); 
   const openEdit = (task) => setModal({type:"edit",task});
+  const openMemoNew = () => setModal({type:"memo-new"});
 
   if(loading) return(
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",flexDirection:"column",gap:12,background:"#f0f0f0"}}><div style={{fontSize:24}}>📋</div><div style={{fontSize:14,color:"#888"}}>데이터 불러오는 중...</div></div>
@@ -736,17 +792,22 @@ function App() {
           {mainTab==="planner"&&<button onClick={()=>setModal({type:"settings"})} style={{fontSize:12,padding:"6px 12px",borderRadius:20,border:"1px solid #ddd",background:"#fff",cursor:"pointer"}}>⚙ 유형 관리</button>}
           {mainTab==="planner"&&<button onClick={()=>openNew(selectedDate||undefined)} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 새 태스크</button>}
           {mainTab==="edu"&&<button onClick={()=>openEduNew(eduSelectedDate||undefined)} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1D9E75",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 교육일정</button>}
+          {mainTab==="memo"&&<button onClick={()=>openMemoNew()} style={{fontSize:12,padding:"6px 14px",borderRadius:20,border:"none",background:"#1A3A6B",color:"#fff",cursor:"pointer",fontWeight:600}}>+ 새 메모</button>}
         </div>
       </div>
       <div style={{display:"flex",gap:4,marginBottom:16}}>
-        {[["planner","📋 플래너"],["edu","🎓 교육일정"]].map(([v,l])=><button key={v} onClick={()=>setMainTab(v)} style={{padding:"8px 18px",borderRadius:10,border:`1.5px solid ${mainTab===v?"#1a1a1a":"#ddd"}`,background:mainTab===v?"#1a1a1a":"transparent",color:mainTab===v?"#fff":"#888",cursor:"pointer",fontWeight:mainTab===v?600:400,fontSize:13}}>{l}</button>)}
+        {[["planner","📋 플래너"],["edu","🎓 교육일정"],["memo","📝 메모"]].map(([v,l])=><button key={v} onClick={()=>setMainTab(v)} style={{padding:"8px 18px",borderRadius:10,border:`1.5px solid ${mainTab===v?"#1a1a1a":"#ddd"}`,background:mainTab===v?"#1a1a1a":"transparent",color:mainTab===v?"#fff":"#888",cursor:"pointer",fontWeight:mainTab===v?600:400,fontSize:13}}>{l}</button>)}
       </div>
+      
       {mainTab==="planner"&&(mobile?mobilePlanner:pcPlanner)}
       {mainTab==="edu"&&<EduGrid eduItems={eduItems} selectedDate={eduSelectedDate} setSelectedDate={setEduSelectedDate} onAdd={openEduNew} onItem={item=>setModal({type:"edu-edit",item})}/>}
+      {mainTab==="memo"&&<MemoBoard memos={memos} onAdd={openMemoNew} onEdit={item=>setModal({type:"memo-edit",item})}/>}
       
       {modal?.type==="settings"&&<Overlay onClose={()=>setModal(null)}><TypeSettings types={types} onSave={saveTypes} onClose={()=>setModal(null)}/></Overlay>}
       {(modal?.type==="new"||modal?.type==="edit")&&<Overlay onClose={()=>setModal(null)}><TaskForm types={types} initial={modal.type==="edit"?modal.task:modal.initial} onSave={saveTask} onClose={()=>setModal(null)} onDelete={modal.type==="edit"?()=>delTask(modal.task.id):null}/></Overlay>}
       {(modal?.type==="edu-new"||modal?.type==="edu-edit")&&<Overlay onClose={()=>setModal(null)}><EduForm eduItems={eduItems} initial={modal.type==="edu-edit"?modal.item:{target:"worker",type:"center",nth:1,startDate:modal.date||tod(),endDate:modal.date||tod(),startTime:"09:00",endTime:"17:00",region:"",place:"",lectures:[{id:gid(),subject:"",instructor:""}],note:""}} onSave={saveEdu} onClose={()=>setModal(null)} onDelete={modal.type==="edu-edit"?()=>delEdu(modal.item.id):null}/></Overlay>}
+      {(modal?.type==="memo-new"||modal?.type==="memo-edit")&&<Overlay onClose={()=>setModal(null)}><MemoForm initial={modal.type==="memo-edit"?modal.item:null} onSave={saveMemo} onClose={()=>setModal(null)} onDelete={modal.type==="memo-edit"?()=>delMemo(modal.item.id):null}/></Overlay>}
+      
       {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"rgba(20,20,20,0.9)",color:"#fff",padding:"8px 20px",borderRadius:24,fontSize:13,zIndex:2000,pointerEvents:"none",whiteSpace:"nowrap"}}>{toast}</div>}
     </div>
   );
